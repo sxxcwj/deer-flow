@@ -48,6 +48,10 @@ log/
 .pnpm-store
 sandbox_image_cache.tar
 
+# Next.js build output (frontend/.gitignore only covers the nested path)
+.next/
+out/
+
 # ignore the legacy `web` folder
 web/
 
