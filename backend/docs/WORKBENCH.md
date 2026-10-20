@@ -101,7 +101,8 @@ A conversation that lost its `threads_meta` row (upstream added that table on
 top of the LangGraph checkpointer, which is where the old workbench kept its
 messages) is recovered: when the checkpointer still holds a checkpoint for
 the thread, the metadata row is recreated and the thread attached — the same
-on-demand pattern upstream uses for goal threads. When no checkpoint survives,
+on-demand pattern upstream uses for goal threads. The first user message
+becomes the conversation's title when it has none. When no checkpoint survives,
 the thread is reported and the import continues.
 
 Run it from `backend/` (the Gateway's own working directory, which is what

@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts.migrate_legacy_projects import RecoveredThread
+
 pytestmark = pytest.mark.anyio
 
 
@@ -193,8 +195,8 @@ class TestImport:
     async def test_thread_without_a_checkpoint_is_not_revived(self, env):
         _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-gone"]))
 
-        async def recover(_thread_id: str) -> bool:
-            return False
+        async def recover(_thread_id: str):
+            return None
 
         report = await _import(env, recover_thread=recover)
 
@@ -204,8 +206,10 @@ class TestImport:
     async def test_thread_with_a_checkpoint_gets_its_metadata_row_recreated(self, env):
         _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-orphan"]))
 
-        async def recover(thread_id: str) -> bool:
-            return thread_id == "thread-orphan"
+        async def recover(thread_id: str):
+            if thread_id == "thread-orphan":
+                return RecoveredThread(display_name="太原 HR 经理薪酬调研")
+            return None
 
         report = await _import(env, recover_thread=recover)
 
@@ -214,12 +218,14 @@ class TestImport:
         thread = await env["threads"].get("thread-orphan", user_id="u1")
         assert thread is not None
         assert thread["metadata"]["deerflow_project_id"] == project["id"]
+        # The recovered conversation keeps a usable title in the list.
+        assert thread["display_name"] == "太原 HR 经理薪酬调研"
 
     async def test_already_imported_project_still_relinks_its_threads(self, env):
         _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-orphan"]))
 
-        async def recover(_thread_id: str) -> bool:
-            return True
+        async def recover(_thread_id: str):
+            return RecoveredThread(display_name="太原 HR 经理薪酬调研")
 
         first = await _import(env, recover_thread=recover)
         assert first.projects == 1
@@ -246,6 +252,31 @@ class TestImport:
         assert any("already belongs to another project" in warning for warning in report.warnings)
         thread = await env["threads"].get("thread-1", user_id="u1")
         assert thread["metadata"]["deerflow_project_id"] == other["id"]
+
+    async def test_an_untitled_thread_gets_a_title_from_the_conversation(self, env):
+        await env["threads"].create("thread-1", user_id="u1")
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-1"]))
+
+        async def recover(_thread_id: str):
+            return RecoveredThread(display_name="太原 HR 经理薪酬调研")
+
+        report = await _import(env, recover_thread=recover)
+
+        assert report.threads == 1
+        thread = await env["threads"].get("thread-1", user_id="u1")
+        assert thread["display_name"] == "太原 HR 经理薪酬调研"
+
+    async def test_a_titled_thread_keeps_its_title(self, env):
+        await env["threads"].create("thread-1", user_id="u1", display_name="原有标题")
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-1"]))
+
+        async def recover(_thread_id: str):
+            return RecoveredThread(display_name="另一个标题")
+
+        await _import(env, recover_thread=recover)
+
+        thread = await env["threads"].get("thread-1", user_id="u1")
+        assert thread["display_name"] == "原有标题"
 
     async def test_material_without_a_file_is_skipped_with_a_warning(self, env):
         payload = _legacy_payload()

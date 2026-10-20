@@ -41,6 +41,7 @@ import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from deerflow.config.app_config import get_app_config
 from deerflow.config.paths import Paths, get_paths
@@ -57,11 +58,20 @@ from deerflow.runtime.user_context import get_effective_user_id
 
 logger = logging.getLogger("migrate_legacy_projects")
 
-#: Answers "does this thread still have recoverable conversation content?".
-ThreadRecovery = Callable[[str], Awaitable[bool]]
+#: Answers "is this thread still recoverable, and under what title?".
+ThreadRecovery = Callable[[str], Awaitable["RecoveredThread | None"]]
+
+
+@dataclass(frozen=True)
+class RecoveredThread:
+    """A conversation found in the checkpointer but missing its metadata row."""
+
+    display_name: str | None = None
+
 
 _LEGACY_PRESENTATION_KEY = "legacy_id"
 _DEFAULT_MAX_FILE_SIZE = 100 * 1024 * 1024
+_TITLE_MAX_LENGTH = 60
 
 
 @dataclass
@@ -112,14 +122,15 @@ def _output_body(title: str, note: str) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
-async def _thread_has_checkpoint(thread_id: str) -> bool:
-    """Does the checkpointer still hold a checkpoint for this thread?
+async def _recover_thread(thread_id: str) -> RecoveredThread | None:
+    """Recover a conversation that lost its ``threads_meta`` row.
 
     The old workbench kept its conversations in the LangGraph checkpointer
     only. Upstream added a ``threads_meta`` table on top of it, so a thread
     whose metadata row is gone is invisible in the UI even though its messages
-    are still on disk. This is the probe that tells the importer the
-    conversation is recoverable.
+    are still on disk. This probes the checkpointer: when a checkpoint is
+    still there the conversation is recoverable, and the first user message
+    makes a usable title.
     """
     from deerflow.runtime.checkpointer import make_checkpointer
 
@@ -127,10 +138,30 @@ async def _thread_has_checkpoint(thread_id: str) -> bool:
         async with make_checkpointer() as checkpointer:
             config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
             checkpoint_tuple = await checkpointer.aget_tuple(config)
-            return checkpoint_tuple is not None
+            if checkpoint_tuple is None:
+                return None
+            return RecoveredThread(display_name=_first_user_message(checkpoint_tuple))
     except Exception as exc:  # noqa: BLE001 — a missing checkpointer is not fatal
         logger.warning("Could not probe the checkpointer for thread %s: %s", thread_id, exc)
-        return False
+        return None
+
+
+def _first_user_message(checkpoint_tuple: Any) -> str | None:
+    """The first human message of a checkpoint, trimmed to a title."""
+    checkpoint = getattr(checkpoint_tuple, "checkpoint", None) or {}
+    channel_values = checkpoint.get("channel_values") or {}
+    messages = channel_values.get("messages") or []
+    for message in messages:
+        if getattr(message, "type", None) != "human":
+            continue
+        content = getattr(message, "content", "")
+        if isinstance(content, list):
+            content = " ".join(str(part.get("text", "")) for part in content if isinstance(part, dict))
+        text = " ".join(str(content).split())
+        if not text:
+            continue
+        return text[:_TITLE_MAX_LENGTH]
+    return None
 
 
 def _report_dry_run(legacy: dict) -> None:
@@ -164,9 +195,11 @@ async def _attach_threads(
             continue
         current = await thread_repo.get(thread_id, user_id=user_id)
         current_project = None
+        needs_title = False
         if current is not None:
             metadata = current.get("metadata") or {}
             current_project = metadata.get(THREAD_PROJECT_METADATA_KEY) if isinstance(metadata, dict) else None
+            needs_title = not str(current.get("display_name") or "").strip()
         if current_project is not None and current_project != project_id:
             # Upstream's model gives a conversation exactly one project, and
             # ``set_project`` overwrites rather than refuses. The old workbench
@@ -175,18 +208,25 @@ async def _attach_threads(
             warnings.append(f"project {project_name!r}: thread {thread_id} already belongs to another project and was left there")
             continue
         bound = await thread_repo.set_project(thread_id, project_id, user_id=user_id)
-        if not bound and recover_thread is not None and await recover_thread(thread_id):
+        recovered: RecoveredThread | None = None
+        if not bound or needs_title:
+            recovered = await recover_thread(thread_id) if recover_thread is not None else None
+        if not bound and recovered is not None:
             # The conversation survived in the checkpointer but lost its
             # metadata row when the old workbench layout was retired. Upstream
             # creates that row on demand (see the goal path in
             # ``app/gateway/routers/threads.py``); recreate it so the thread
             # shows up in the list again, then attach the project.
             try:
-                await thread_repo.create(thread_id, user_id=user_id)
+                await thread_repo.create(thread_id, user_id=user_id, display_name=recovered.display_name)
             except Exception as exc:  # noqa: BLE001 — never abort the batch
                 warnings.append(f"project {project_name!r}: thread {thread_id} could not be recovered ({exc})")
                 continue
             bound = await thread_repo.set_project(thread_id, project_id, user_id=user_id)
+        if bound and needs_title and recovered is not None and recovered.display_name:
+            # The row exists but carries no title; name it after its first
+            # user message so the conversation is recognisable in the list.
+            await thread_repo.update_display_name(thread_id, recovered.display_name, user_id=user_id)
         if bound:
             attached += 1
             logger.info("  thread %s now belongs to project %s", thread_id, project_id)
@@ -432,7 +472,7 @@ async def _run(args: argparse.Namespace) -> int:
         base_dir=base_dir,
         user_id=user_id,
         max_file_size=max_file_size,
-        recover_thread=_thread_has_checkpoint,
+        recover_thread=_recover_thread,
     )
 
     for warning in report.warnings:
