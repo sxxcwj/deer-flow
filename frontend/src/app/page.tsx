@@ -1,26 +1,34 @@
-import { Footer } from "@/components/landing/footer";
-import { Header } from "@/components/landing/header";
-import { Hero } from "@/components/landing/hero";
-import { CaseStudySection } from "@/components/landing/sections/case-study-section";
-import { CommunitySection } from "@/components/landing/sections/community-section";
-import { SandboxSection } from "@/components/landing/sections/sandbox-section";
-import { SkillsSection } from "@/components/landing/sections/skills-section";
-import { WhatsNewSection } from "@/components/landing/sections/whats-new-section";
-import { DEFAULT_LOCALE } from "@/core/i18n/locale";
+import { type Metadata } from "next";
+import { Fraunces, Noto_Serif_SC } from "next/font/google";
+
+import { PromoPage } from "@/components/changban/promo-page";
+
+const serif = Noto_Serif_SC({
+  weight: ["500", "600", "700"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-cb-serif",
+  preload: false,
+});
+
+const display = Fraunces({
+  weight: ["500", "600"],
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-cb-display",
+});
+
+export const metadata: Metadata = {
+  title: "长伴咨询",
+  description:
+    "每个高成长企业背后，都有长伴相随。组织、激励与人才的长期陪伴。",
+};
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen w-full overflow-x-clip bg-[#0a0a0a]">
-      <Header locale={DEFAULT_LOCALE} />
-      <main className="flex w-full flex-col">
-        <Hero />
-        <CaseStudySection />
-        <SkillsSection />
-        <SandboxSection />
-        <WhatsNewSection />
-        <CommunitySection />
-      </main>
-      <Footer />
+    <div className={`${serif.variable} ${display.variable}`}>
+      <PromoPage />
     </div>
   );
 }

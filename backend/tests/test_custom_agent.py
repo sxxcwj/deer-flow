@@ -670,7 +670,7 @@ class TestAgentsAPI:
             json=package,
         )
         assert imported.status_code == 201
-        assert imported.json() == {**payload, "name": "research-lead-copy", "knowledge_scope": None}
+        assert imported.json() == {**payload, "name": "research-lead-copy", "knowledge_scope": None, "avatar": None}
 
     def test_agent_package_excludes_runtime_state_and_operator_github_binding(self, agent_client, tmp_path):
         assert agent_client.post("/api/agents", json={"name": "portable", "soul": "Portable soul"}).status_code == 201
@@ -908,6 +908,52 @@ class TestAgentsAPI:
         response = agent_client.put("/api/agents/update-me", json={"soul": "updated"})
         assert response.status_code == 200
         assert response.json()["soul"] == "updated"
+
+    def test_update_agent_avatar(self, agent_client, tmp_path):
+        import app.gateway.routers.agents as agents_router
+
+        # The stub auth user id is a fresh uuid per request, so pin it to read
+        # the per-user agent directory back off disk.
+        with patch.object(agents_router, "get_effective_user_id", return_value="tester"):
+            created = agent_client.post("/api/agents", json={"name": "face-agent", "description": "old", "soul": "p"})
+            assert created.status_code == 201
+
+            response = agent_client.put("/api/agents/face-agent", json={"avatar": "🦌"})
+            assert response.status_code == 200
+            assert response.json()["avatar"] == "🦌"
+
+            agent_dir = tmp_path / "users" / "tester" / "agents" / "face-agent"
+            config = yaml.safe_load((agent_dir / "config.yaml").read_text())
+            assert config["avatar"] == "🦌"
+
+            image = agent_client.put("/api/agents/face-agent", json={"avatar": "https://example.com/face.png"})
+            assert image.status_code == 200
+            assert image.json()["avatar"] == "https://example.com/face.png"
+
+            cleared = agent_client.put("/api/agents/face-agent", json={"avatar": ""})
+            assert cleared.status_code == 200
+            assert cleared.json()["avatar"] is None
+
+            invalid = agent_client.put("/api/agents/face-agent", json={"avatar": "javascript:alert(1)"})
+            assert invalid.status_code == 422
+
+    def test_update_description_keeps_avatar_and_skills(self, agent_client, tmp_path):
+        import app.gateway.routers.agents as agents_router
+
+        with patch.object(agents_router, "get_effective_user_id", return_value="tester"):
+            agent_dir = tmp_path / "users" / "tester" / "agents" / "keep-agent"
+            agent_dir.mkdir(parents=True)
+            (agent_dir / "config.yaml").write_text("name: keep-agent\ndescription: old\navatar: 🦊\nskills: []\n", encoding="utf-8")
+            (agent_dir / "SOUL.md").write_text("soul", encoding="utf-8")
+
+            response = agent_client.put("/api/agents/keep-agent", json={"description": "new"})
+            assert response.status_code == 200
+            assert response.json()["avatar"] == "🦊"
+            assert response.json()["description"] == "new"
+
+            config = yaml.safe_load((agent_dir / "config.yaml").read_text())
+            assert config["avatar"] == "🦊"
+            assert config["skills"] == []
 
     def test_update_agent_description(self, agent_client):
         agent_client.post("/api/agents", json={"name": "desc-agent", "description": "old desc", "soul": "p"})

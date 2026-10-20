@@ -1,6 +1,9 @@
 import "katex/dist/katex.min.css";
 import "streamdown/styles.css";
 
+import "@/components/workspace/workbench-shell.css";
+
+import { type Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { GatewayOfflineFallback } from "@/components/workspace/gateway-offline-fallback";
@@ -14,6 +17,10 @@ import { detectLocaleServer } from "@/core/i18n/server";
 import { WorkspaceContent } from "./workspace-content";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "长伴咨询",
+};
 
 export default async function WorkspaceLayout({
   children,

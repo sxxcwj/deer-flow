@@ -635,6 +635,9 @@ export const enUS: Translations = {
     agents: "Agents",
     scheduledTasks: "Scheduled tasks",
     agentsDisabledTooltip: "Feature not enabled",
+    home: "Home",
+    projects: "Projects",
+    methods: "Methods",
   },
 
   // Knowledge scope for custom-agent chat
@@ -1464,6 +1467,12 @@ export const enUS: Translations = {
     settingsInvalidTemperature: "Temperature must be between 0 and 2",
     settingsInvalidMaxTokens:
       "Max output tokens must be a positive integer up to 200,000",
+    changeAvatar: "Change avatar",
+    avatarHint: "Use an emoji, or paste an http(s) image URL.",
+    avatarPlaceholder: "e.g. 🦌 or https://...",
+    avatarSaved: "Avatar updated",
+    avatarSaveFailed: "Could not update avatar",
+    avatarUseDefault: "Use default",
   },
 
   // Breadcrumb
@@ -1480,6 +1489,7 @@ export const enUS: Translations = {
     visitGithub: "DeerFlow on GitHub",
     reportIssue: "Report an issue",
     contactUs: "Contact us",
+    phone: "Phone",
     about: "About DeerFlow",
     logout: "Log out",
     gatewayUnavailable: "Gateway is temporarily unavailable.",
@@ -2529,5 +2539,41 @@ export const enUS: Translations = {
       account_disabled:
         "This account has been disabled. Contact your administrator.",
     },
+  },
+  workbench: {
+    title: "Changban",
+    lede: "Start an organization conversation, or pick up the last one.",
+    newChat: "New chat",
+    newChatHint: "Ask about organization, talent, and incentives.",
+    agents: "Agents",
+    agentsHint: "Use a role you already defined, or make another.",
+    chats: "All chats",
+    chatsHint: "Return to an earlier thread.",
+    projects: "Projects",
+    projectsHint: "Keep track of work in progress. You name each one.",
+    methods: "Methods",
+    methodsHint: "Firm methods and templates, not tied to one project.",
+    recent: "Recent chats",
+    recentEmpty: "No chats yet. Start a new one.",
+  },
+  methods: {
+    title: "Methods",
+    description: "Firm methods, not tied to one project. You write or upload them.",
+    titlePlaceholder: "Name, for example pay basis",
+    bodyPlaceholder: "Write the rule",
+    add: "Save",
+    empty: "No methods yet.",
+    added: "Saved",
+    deleted: "Removed",
+    titleRequired: "Enter a name",
+  },
+  search: {
+    placeholder: "Search projects, chats, materials, or methods",
+    empty: "No matches.",
+    project: "Project",
+    output: "Note",
+    material: "Material",
+    method: "Method",
+    chat: "Chat",
   },
 };

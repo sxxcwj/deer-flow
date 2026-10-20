@@ -21,6 +21,7 @@ from deerflow.config.agents_config import (
     list_custom_agents,
     load_agent_config,
     load_agent_soul,
+    normalize_avatar,
     preserve_non_managed_fields,
 )
 from deerflow.config.app_config import AppConfig, get_app_config
@@ -59,6 +60,7 @@ class AgentResponse(BaseModel):
     model_settings: AgentModelSettings | None = Field(default=None, description="Per-agent sampling overrides (temperature / max_tokens)")
     thinking_enabled: bool | None = Field(default=None, description="Per-agent thinking-mode default (None = runtime default)")
     reasoning_effort: ReasoningEffort | None = Field(default=None, description="Per-agent reasoning-effort default (None = runtime default)")
+    avatar: str | None = Field(default=None, description="Emoji or http(s) image URL")
     soul: str | None = Field(default=None, description="SOUL.md content")
 
 
@@ -89,6 +91,7 @@ class AgentCreateRequest(BaseModel):
     model_settings: AgentModelSettings | None = Field(default=None, description="Per-agent sampling overrides (temperature / max_tokens)")
     thinking_enabled: bool | None = Field(default=None, description="Per-agent thinking-mode default (None = runtime default)")
     reasoning_effort: ReasoningEffort | None = Field(default=None, description="Per-agent reasoning-effort default (None = runtime default)")
+    avatar: str | None = Field(default=None, description="Emoji or http(s) image URL")
     soul: str = Field(default="", description="SOUL.md content — agent personality and behavioral guardrails")
 
 
@@ -106,6 +109,7 @@ class AgentUpdateRequest(BaseModel):
     model_settings: AgentModelSettings | None = Field(default=None, description="Updated per-agent sampling overrides")
     thinking_enabled: bool | None = Field(default=None, description="Updated per-agent thinking-mode default")
     reasoning_effort: ReasoningEffort | None = Field(default=None, description="Updated per-agent reasoning-effort default")
+    avatar: str | None = Field(default=None, description="Updated emoji or image URL; empty string clears it")
     soul: str | None = Field(default=None, description="Updated SOUL.md content")
 
 
@@ -247,6 +251,7 @@ def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False
         model_settings=agent_cfg.model_settings,
         thinking_enabled=agent_cfg.thinking_enabled,
         reasoning_effort=agent_cfg.reasoning_effort,
+        avatar=agent_cfg.avatar,
         soul=soul,
     )
 
@@ -268,6 +273,13 @@ def _build_agent_config(body: AgentCreateRequest, normalized_name: str, *, memor
         config_data["skills"] = body.skills
     if body.allowed_subagents is not None:
         config_data["allowed_subagents"] = body.allowed_subagents
+    if body.avatar is not None:
+        try:
+            avatar = normalize_avatar(body.avatar)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if avatar is not None:
+            config_data["avatar"] = avatar
     if not memory_enabled:
         config_data["memory_enabled"] = False
     _apply_model_behavior(config_data, body)
@@ -524,6 +536,8 @@ async def create_agent_endpoint(body: AgentCreateRequest, request: Request) -> A
         return await _persist_new_agent(body, normalized_name, user_id)
     except AgentExistsError:
         raise HTTPException(status_code=409, detail=f"Agent '{normalized_name}' already exists")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to create agent '{body.name}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
@@ -592,7 +606,7 @@ async def update_agent(name: str, body: AgentUpdateRequest, request: Request) ->
         # Use model_fields_set to distinguish "field omitted" from "explicitly set to null".
         # This is critical for skills where None means "inherit all" (not "don't change").
         fields_set = body.model_fields_set
-        config_changed = bool(fields_set & ({"display_name", "description", "tool_groups", "skills", "mcp_plugins", "knowledge_scope", "allowed_subagents"} | set(_MODEL_BEHAVIOR_FIELDS)))
+        config_changed = bool(fields_set & ({"display_name", "description", "tool_groups", "skills", "mcp_plugins", "knowledge_scope", "allowed_subagents", "avatar"} | set(_MODEL_BEHAVIOR_FIELDS)))
 
         updated: dict | None = None
         if config_changed:
@@ -630,6 +644,17 @@ async def update_agent(name: str, body: AgentUpdateRequest, request: Request) ->
             # take explicitly-set request fields, else preserve the existing
             # value (issue #4336).
             _apply_model_behavior(updated, body, existing=agent_cfg)
+
+            # avatar: an empty string clears it, an omitted field preserves the
+            # current value. normalize_avatar rejects anything that is not a
+            # short emoji or an http(s) image URL.
+            if "avatar" in fields_set:
+                try:
+                    updated["avatar"] = normalize_avatar(body.avatar)
+                except ValueError as exc:
+                    raise HTTPException(status_code=422, detail=str(exc)) from exc
+            elif agent_cfg.avatar is not None:
+                updated["avatar"] = agent_cfg.avatar
 
             # Carry forward every top-level AgentConfig field this route does
             # not manage (currently ``github:``, plus any future field added

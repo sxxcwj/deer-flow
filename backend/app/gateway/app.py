@@ -41,6 +41,7 @@ from app.gateway.routers import (
     mcp,
     mcp_tasks,
     memory,
+    methods,
     models,
     personal_mcp,
     plugins,
@@ -49,6 +50,7 @@ from app.gateway.routers import (
     projects,
     runs,
     scheduled_tasks,
+    search,
     skill_mutations,
     skills,
     subagent_batches,
@@ -1370,6 +1372,11 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Deployment-level subagent catalog and admin management.
     app.include_router(subagents.router)
+
+    # Workbench methods (firm methodologies) and local search.
+    # NOTE: /api/projects is served by the upstream database-backed router above.
+    app.include_router(methods.router)
+    app.include_router(search.router)
 
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)

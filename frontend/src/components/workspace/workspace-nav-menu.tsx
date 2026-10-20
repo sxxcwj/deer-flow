@@ -1,11 +1,10 @@
 "use client";
 
 import {
-  BugIcon,
   ChevronsUpDown,
-  GlobeIcon,
   InfoIcon,
   MailIcon,
+  PhoneIcon,
   Settings2Icon,
   SettingsIcon,
 } from "lucide-react";
@@ -27,8 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
 
-import { GithubIcon } from "./github-icon";
-import { useSettingsDialog } from "./settings";
+import { SettingsDialog, type SettingsSection } from "./settings";
 
 function NavMenuButtonContent({
   isSidebarOpen,
@@ -51,7 +49,8 @@ function NavMenuButtonContent({
 }
 
 export function WorkspaceNavMenu() {
-  const { openSettings } = useSettingsDialog();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDefaultSection, setSettingsDefaultSection] = useState<SettingsSection>("appearance");
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const { t } = useI18n();
@@ -62,6 +61,11 @@ export function WorkspaceNavMenu() {
 
   return (
     <>
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        defaultSection={settingsDefaultSection}
+      />
       <SidebarMenu className="w-full">
         <SidebarMenuItem>
           {mounted ? (
@@ -82,55 +86,32 @@ export function WorkspaceNavMenu() {
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => {
-                      openSettings("appearance");
+                      setSettingsDefaultSection("appearance");
+                      setSettingsOpen(true);
                     }}
                   >
                     <Settings2Icon />
                     {t.common.settings}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <a
-                    href="https://deerflow.tech/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <GlobeIcon />
-                      {t.workspace.officialWebsite}
-                    </DropdownMenuItem>
-                  </a>
-                  <a
-                    href="https://github.com/bytedance/deer-flow"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <GithubIcon />
-                      {t.workspace.visitGithub}
-                    </DropdownMenuItem>
-                  </a>
-                  <DropdownMenuSeparator />
-                  <a
-                    href="https://github.com/bytedance/deer-flow/issues"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <DropdownMenuItem>
-                      <BugIcon />
-                      {t.workspace.reportIssue}
-                    </DropdownMenuItem>
-                  </a>
-                  <a href="mailto:support@deerflow.tech">
+                  <a href="mailto:wangjian@cbrlzy.com">
                     <DropdownMenuItem>
                       <MailIcon />
                       {t.workspace.contactUs}
+                    </DropdownMenuItem>
+                  </a>
+                  <a href="tel:13233635522">
+                    <DropdownMenuItem>
+                      <PhoneIcon />
+                      {t.workspace.phone}
                     </DropdownMenuItem>
                   </a>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
-                    openSettings("about");
+                    setSettingsDefaultSection("about");
+                    setSettingsOpen(true);
                   }}
                 >
                   <InfoIcon />

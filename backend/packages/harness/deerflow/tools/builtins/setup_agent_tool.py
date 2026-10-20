@@ -106,6 +106,8 @@ def setup_agent(
                     config_data["knowledge_scope"] = canonicalize_knowledge_scope(existing.knowledge_scope)
                 if existing.display_name is not None:
                     config_data["display_name"] = existing.display_name
+                if existing.avatar is not None:
+                    config_data["avatar"] = existing.avatar
             if description:
                 config_data["description"] = description
             if skills is not None:

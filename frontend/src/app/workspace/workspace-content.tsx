@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { CSSProperties } from "react";
 import { Toaster } from "sonner";
 
 import { QueryClientProvider } from "@/components/query-client-provider";
@@ -36,7 +37,11 @@ export async function WorkspaceContent({
     <QueryClientProvider>
       <UserPreferencesBoundary>
         <ExtensionPageBootstrap />
-        <SidebarProvider className="h-screen" defaultOpen={initialSidebarOpen}>
+        <SidebarProvider
+          className="cb-shell h-screen"
+          style={{ "--sidebar-width": "232px" } as CSSProperties}
+          defaultOpen={initialSidebarOpen}
+        >
           <WorkspaceSidebar />
           <SidebarInset className="min-w-0">
             <GatewayOfflineBanner gatewayUnavailable={gatewayUnavailable} />

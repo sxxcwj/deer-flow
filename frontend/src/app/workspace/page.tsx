@@ -1,11 +1,21 @@
+import fs from "fs";
+import path from "path";
+
 import { redirect } from "next/navigation";
 
-import { DEMO_THREAD_IDS } from "@/core/threads/static-demo";
+import { WorkbenchHome } from "@/components/workspace/workbench-home";
 import { env } from "@/env";
 
 export default function WorkspacePage() {
   if (env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true") {
-    return redirect(`/workspace/chats/${DEMO_THREAD_IDS[0]}`);
+    const firstThread = fs
+      .readdirSync(path.resolve(process.cwd(), "public/demo/threads"), {
+        withFileTypes: true,
+      })
+      .find((thread) => thread.isDirectory() && !thread.name.startsWith("."));
+    if (firstThread) {
+      return redirect(`/workspace/chats/${firstThread.name}`);
+    }
   }
-  return redirect("/workspace/chats/new");
+  return <WorkbenchHome />;
 }

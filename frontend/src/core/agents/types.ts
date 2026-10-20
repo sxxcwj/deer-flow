@@ -20,6 +20,7 @@ export interface Agent {
   model_settings?: AgentModelSettings | null;
   thinking_enabled?: boolean | null;
   reasoning_effort?: ReasoningEffort | null;
+  avatar?: string | null;
   soul?: string | null;
 }
 
@@ -36,6 +37,7 @@ export interface CreateAgentRequest {
   model_settings?: AgentModelSettings | null;
   thinking_enabled?: boolean | null;
   reasoning_effort?: ReasoningEffort | null;
+  avatar?: string | null;
   soul?: string;
 }
 
@@ -62,5 +64,6 @@ export interface UpdateAgentRequest {
   model_settings?: AgentModelSettings | null;
   thinking_enabled?: boolean | null;
   reasoning_effort?: ReasoningEffort | null;
+  avatar?: string | null;
   soul?: string | null;
 }

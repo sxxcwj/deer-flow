@@ -482,6 +482,9 @@ export interface Translations {
     scheduledTasks: string;
     agentsDisabledTooltip: string;
     channels: string;
+    home: string;
+    projects: string;
+    methods: string;
   };
   // Sidebar projects section
   projects: {
@@ -1188,6 +1191,12 @@ export interface Translations {
     settingsSaved: string;
     settingsInvalidTemperature: string;
     settingsInvalidMaxTokens: string;
+    changeAvatar: string;
+    avatarHint: string;
+    avatarPlaceholder: string;
+    avatarSaved: string;
+    avatarSaveFailed: string;
+    avatarUseDefault: string;
   };
 
   // Breadcrumb
@@ -1204,6 +1213,7 @@ export interface Translations {
     visitGithub: string;
     reportIssue: string;
     contactUs: string;
+    phone: string;
     about: string;
     logout: string;
     gatewayUnavailable: string;
@@ -2037,5 +2047,41 @@ export interface Translations {
       sso_not_allowed: string;
       account_disabled: string;
     };
+  };
+  workbench: {
+    title: string;
+    lede: string;
+    newChat: string;
+    newChatHint: string;
+    agents: string;
+    agentsHint: string;
+    chats: string;
+    chatsHint: string;
+    projects: string;
+    projectsHint: string;
+    methods: string;
+    methodsHint: string;
+    recent: string;
+    recentEmpty: string;
+  };
+  methods: {
+    title: string;
+    description: string;
+    titlePlaceholder: string;
+    bodyPlaceholder: string;
+    add: string;
+    empty: string;
+    added: string;
+    deleted: string;
+    titleRequired: string;
+  };
+  search: {
+    placeholder: string;
+    empty: string;
+    project: string;
+    output: string;
+    material: string;
+    method: string;
+    chat: string;
   };
 }

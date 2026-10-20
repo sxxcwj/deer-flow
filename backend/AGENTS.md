@@ -336,7 +336,14 @@ See [docs/summarization.md](docs/summarization.md) for details.
 
 For models with `supports_vision: true`: `ViewImageMiddleware` processes images and adds `view_image_tool`. Images reach the model as base64 in a hidden message carrying a reserved ID prefix plus a server-owned metadata marker (Gateway strips the marker from untrusted input; the middleware requires both to recognize its own message). The injection happens inside `wrap_model_call`, so payloads never enter graph state — checkpoints keep only lightweight `viewed_images` metadata, and client-chosen IDs survive; the middleware also sweeps its own message out of every request before rebuilding it, so a payload stranded in an older checkpoint by an interrupted run stops being resent.
 
-## Code Style
+## Workbench Extensions (长伴咨询)
+
+Upstream is the general agent platform; the consulting-specific additions on
+top of it (methods, search, agent avatar, project ownership) are documented in
+[docs/WORKBENCH.md](docs/WORKBENCH.md). Read it before touching those areas —
+they are not upstream features and must survive each upstream sync.
+
+
 
 - Uses `ruff` for linting and formatting
 - Line length: 240 characters

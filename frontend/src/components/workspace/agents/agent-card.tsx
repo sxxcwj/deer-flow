@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BotIcon,
   DownloadIcon,
   MessageSquareIcon,
   Settings2Icon,
@@ -34,6 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AgentAvatar } from "@/components/workspace/agents/agent-avatar";
 import { exportAgentPackage, useDeleteAgent } from "@/core/agents";
 import type { Agent } from "@/core/agents";
 import { useI18n } from "@/core/i18n/hooks";
@@ -162,9 +162,12 @@ export function AgentCard({ agent }: AgentCardProps) {
         <CardHeader className="pb-3">
           <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
-                <BotIcon className="h-5 w-5" />
-              </div>
+              <AgentAvatar
+                name={agent.name}
+                avatar={agent.avatar}
+                editable
+                className="h-9 w-9 rounded-lg"
+              />
               <div className="min-w-0">
                 <TruncatedTooltip text={displayName}>
                   <CardTitle className="truncate text-base">

@@ -578,6 +578,13 @@ def build_middlewares(
         )
     )
 
+    # 长伴咨询: the firm's own methodologies (公司方法论) are not modelled
+    # upstream. Rendered request-only, next to DynamicContextMiddleware, so
+    # the brief never lands in state or checkpoints.
+    from deerflow.agents.middlewares.methods_context_middleware import MethodsContextMiddleware
+
+    middlewares.append(MethodsContextMiddleware())
+
     # Deterministically load a full SKILL.md when the user starts the turn with
     # /skill-name. This keeps the base system prompt metadata-only while giving
     # explicit user activation priority over model-side relevance guessing.

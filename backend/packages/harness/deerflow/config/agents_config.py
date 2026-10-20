@@ -12,6 +12,7 @@ import re
 import unicodedata
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
@@ -204,6 +205,25 @@ class AgentModelSettings(BaseModel):
     )
 
 
+def normalize_avatar(avatar: str | None) -> str | None:
+    """Accept a short emoji or an http(s) image URL. Blank clears the avatar."""
+    if avatar is None:
+        return None
+    value = avatar.strip()
+    if not value:
+        return None
+    if any(ord(char) < 32 for char in value):
+        raise ValueError("Avatar contains invalid characters.")
+    if ":" in value or value.startswith("//"):
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or len(value) > 2048:
+            raise ValueError("Avatar image must be an http or https URL.")
+        return value
+    if len(value) > 32:
+        raise ValueError("Avatar must be a short emoji or an http(s) image URL.")
+    return value
+
+
 class AgentConfig(BaseModel):
     """Configuration for a custom agent."""
 
@@ -212,6 +232,7 @@ class AgentConfig(BaseModel):
     description: str = ""
     model: str | None = None
     tool_groups: list[str] | None = None
+    avatar: str | None = None
     # skills controls which skills are discoverable and may be activated by the
     # agent. allowed-tools is compatibility metadata only and never restricts
     # tools:
