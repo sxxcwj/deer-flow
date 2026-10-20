@@ -76,7 +76,7 @@ async def env(tmp_path):
     await close_engine()
 
 
-async def _import(env, *, user_id: str = "u1"):
+async def _import(env, *, user_id: str = "u1", recover_thread=None):
     from scripts.migrate_legacy_projects import import_legacy_projects
 
     return await import_legacy_projects(
@@ -86,6 +86,7 @@ async def _import(env, *, user_id: str = "u1"):
         paths=env["paths"],
         base_dir=env["legacy_root"],
         user_id=user_id,
+        recover_thread=recover_thread,
     )
 
 
@@ -188,6 +189,63 @@ class TestImport:
         assert report.projects == 1
         assert report.threads == 0
         assert any("thread-missing" in warning for warning in report.warnings)
+
+    async def test_thread_without_a_checkpoint_is_not_revived(self, env):
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-gone"]))
+
+        async def recover(_thread_id: str) -> bool:
+            return False
+
+        report = await _import(env, recover_thread=recover)
+
+        assert report.threads == 0
+        assert await env["threads"].get("thread-gone", user_id="u1") is None
+
+    async def test_thread_with_a_checkpoint_gets_its_metadata_row_recreated(self, env):
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-orphan"]))
+
+        async def recover(thread_id: str) -> bool:
+            return thread_id == "thread-orphan"
+
+        report = await _import(env, recover_thread=recover)
+
+        assert report.threads == 1
+        project = (await env["projects"].list(user_id="u1"))[0]
+        thread = await env["threads"].get("thread-orphan", user_id="u1")
+        assert thread is not None
+        assert thread["metadata"]["deerflow_project_id"] == project["id"]
+
+    async def test_already_imported_project_still_relinks_its_threads(self, env):
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-orphan"]))
+
+        async def recover(_thread_id: str) -> bool:
+            return True
+
+        first = await _import(env, recover_thread=recover)
+        assert first.projects == 1
+        assert first.threads == 1
+
+        # The project is imported already; the thread link is re-established.
+        await env["threads"].delete("thread-orphan", user_id="u1")
+        second = await _import(env, recover_thread=recover)
+
+        assert second.projects == 0
+        assert second.documents == 0
+        assert second.threads == 1
+        assert len(await env["projects"].list(user_id="u1")) == 1
+
+    async def test_a_thread_claimed_by_another_project_is_left_alone(self, env):
+        """Upstream gives a conversation one project; the first claim wins."""
+        other = await env["projects"].create(name="Other", user_id="u1")
+        await env["threads"].create("thread-1", user_id="u1", project_id=other["id"])
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-1"]))
+
+        report = await _import(env)
+
+        assert report.threads == 0
+        assert any("already belongs to another project" in warning for warning in report.warnings)
+        thread = await env["threads"].get("thread-1", user_id="u1")
+        assert thread["metadata"]["deerflow_project_id"] == other["id"]
 
     async def test_material_without_a_file_is_skipped_with_a_warning(self, env):
         payload = _legacy_payload()

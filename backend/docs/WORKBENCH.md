@@ -91,6 +91,19 @@ carried over from the old layout.
 | output record | shelf document, `source_kind == "output"`; the legacy layout stored no bytes, so the title and note are rendered as a markdown body |
 | `thread_ids` | `threads_meta.project_id` |
 
+Conversations deserve a note: the old workbench let several projects point at
+the same conversation, while upstream's model gives a conversation exactly one
+project. The importer therefore lets the **first** project to claim a thread
+keep it and reports the others as warnings — it never silently moves a thread
+that is already attached.
+
+A conversation that lost its `threads_meta` row (upstream added that table on
+top of the LangGraph checkpointer, which is where the old workbench kept its
+messages) is recovered: when the checkpointer still holds a checkpoint for
+the thread, the metadata row is recreated and the thread attached — the same
+on-demand pattern upstream uses for goal threads. When no checkpoint survives,
+the thread is reported and the import continues.
+
 Run it from `backend/` (the Gateway's own working directory, which is what
 `database.sqlite_dir` is relative to):
 
@@ -105,11 +118,13 @@ Properties, mirroring `scripts/migrate_agents_to_db.py`:
 
 - **Explicit, operator-run** — nothing auto-imports on boot.
 - **Idempotent** — the legacy id is recorded in `projects.presentation.legacy_id`,
-  so a second run imports nothing.
+  so a second run imports no new project or document. The conversation links are
+  re-checked on every run, so a thread that only becomes recoverable later can
+  still be attached by re-running the script.
 - **Non-destructive** — the legacy JSON and material files are left in place.
 - **Owner-scoped** — imported projects belong to `--user-id` (default: the
   effective runtime user) and are invisible to other users.
-- A thread that no longer exists in `threads_meta` is reported as a warning
-  and does not abort the import.
+- A thread that cannot be attached is reported as a warning and does not abort
+  the import.
 
 Tests: `tests/test_migrate_legacy_projects.py`.

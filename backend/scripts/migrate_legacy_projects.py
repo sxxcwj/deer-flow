@@ -38,6 +38,7 @@ import asyncio
 import json
 import logging
 import sys
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -45,6 +46,7 @@ from deerflow.config.app_config import get_app_config
 from deerflow.config.paths import Paths, get_paths
 from deerflow.persistence.engine import get_session_factory, init_engine_from_config
 from deerflow.persistence.projects.sql import ProjectDocumentRepository, ProjectRepository
+from deerflow.persistence.thread_meta import THREAD_PROJECT_METADATA_KEY
 from deerflow.persistence.thread_meta.sql import ThreadMetaRepository
 from deerflow.projects.documents import (
     add_staged_document,
@@ -54,6 +56,9 @@ from deerflow.projects.documents import (
 from deerflow.runtime.user_context import get_effective_user_id
 
 logger = logging.getLogger("migrate_legacy_projects")
+
+#: Answers "does this thread still have recoverable conversation content?".
+ThreadRecovery = Callable[[str], Awaitable[bool]]
 
 _LEGACY_PRESENTATION_KEY = "legacy_id"
 _DEFAULT_MAX_FILE_SIZE = 100 * 1024 * 1024
@@ -107,6 +112,27 @@ def _output_body(title: str, note: str) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
+async def _thread_has_checkpoint(thread_id: str) -> bool:
+    """Does the checkpointer still hold a checkpoint for this thread?
+
+    The old workbench kept its conversations in the LangGraph checkpointer
+    only. Upstream added a ``threads_meta`` table on top of it, so a thread
+    whose metadata row is gone is invisible in the UI even though its messages
+    are still on disk. This is the probe that tells the importer the
+    conversation is recoverable.
+    """
+    from deerflow.runtime.checkpointer import make_checkpointer
+
+    try:
+        async with make_checkpointer() as checkpointer:
+            config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+            checkpoint_tuple = await checkpointer.aget_tuple(config)
+            return checkpoint_tuple is not None
+    except Exception as exc:  # noqa: BLE001 — a missing checkpointer is not fatal
+        logger.warning("Could not probe the checkpointer for thread %s: %s", thread_id, exc)
+        return False
+
+
 def _report_dry_run(legacy: dict) -> None:
     """Describe what a legacy project would contribute, without touching the db."""
     name = str(legacy.get("name") or "").strip()
@@ -121,6 +147,54 @@ def _report_dry_run(legacy: dict) -> None:
         logger.info("[dry-run]   attach thread %s", thread_id)
 
 
+async def _attach_threads(
+    *,
+    thread_repo: ThreadMetaRepository,
+    legacy: dict,
+    project_id: str,
+    project_name: str,
+    user_id: str,
+    recover_thread: ThreadRecovery | None,
+) -> tuple[int, list[str]]:
+    """Attach the legacy project's conversations to it. Returns (attached, warnings)."""
+    warnings: list[str] = []
+    attached = 0
+    for thread_id in legacy.get("thread_ids") or []:
+        if not isinstance(thread_id, str) or not thread_id:
+            continue
+        current = await thread_repo.get(thread_id, user_id=user_id)
+        current_project = None
+        if current is not None:
+            metadata = current.get("metadata") or {}
+            current_project = metadata.get(THREAD_PROJECT_METADATA_KEY) if isinstance(metadata, dict) else None
+        if current_project is not None and current_project != project_id:
+            # Upstream's model gives a conversation exactly one project, and
+            # ``set_project`` overwrites rather than refuses. The old workbench
+            # let several projects point at the same conversation, so the first
+            # project to claim it keeps it and the others are reported.
+            warnings.append(f"project {project_name!r}: thread {thread_id} already belongs to another project and was left there")
+            continue
+        bound = await thread_repo.set_project(thread_id, project_id, user_id=user_id)
+        if not bound and recover_thread is not None and await recover_thread(thread_id):
+            # The conversation survived in the checkpointer but lost its
+            # metadata row when the old workbench layout was retired. Upstream
+            # creates that row on demand (see the goal path in
+            # ``app/gateway/routers/threads.py``); recreate it so the thread
+            # shows up in the list again, then attach the project.
+            try:
+                await thread_repo.create(thread_id, user_id=user_id)
+            except Exception as exc:  # noqa: BLE001 — never abort the batch
+                warnings.append(f"project {project_name!r}: thread {thread_id} could not be recovered ({exc})")
+                continue
+            bound = await thread_repo.set_project(thread_id, project_id, user_id=user_id)
+        if bound:
+            attached += 1
+            logger.info("  thread %s now belongs to project %s", thread_id, project_id)
+        else:
+            warnings.append(f"project {project_name!r}: thread {thread_id} was not attached (no such thread row, or it already belongs to another project)")
+    return attached, warnings
+
+
 async def _import_project(
     *,
     project_repo: ProjectRepository,
@@ -131,6 +205,7 @@ async def _import_project(
     legacy: dict,
     user_id: str,
     max_file_size: int,
+    recover_thread: ThreadRecovery | None = None,
 ) -> tuple[int, int, int, list[str]]:
     """Import one legacy project. Returns (projects, documents, threads, warnings)."""
     warnings: list[str] = []
@@ -141,12 +216,25 @@ async def _import_project(
         return 0, 0, 0, warnings
 
     # Idempotency: the legacy id is recorded in ``presentation`` so a second
-    # run recognises its own earlier import.
+    # run recognises its own earlier import. The documents are not touched
+    # again, but the conversations are still (re)attached: a thread that lost
+    # its metadata row can be recovered long after the project itself was
+    # imported.
     for existing in await project_repo.list(user_id=user_id):
         presentation = existing.get("presentation") or {}
         if isinstance(presentation, dict) and presentation.get(_LEGACY_PRESENTATION_KEY) == legacy_id:
             logger.info("skip project %r: already imported as %s", name, existing.get("id"))
-            return 0, 0, 0, warnings
+            project_id = str(existing.get("id"))
+            threads, thread_warnings = await _attach_threads(
+                thread_repo=thread_repo,
+                legacy=legacy,
+                project_id=project_id,
+                project_name=name,
+                user_id=user_id,
+                recover_thread=recover_thread,
+            )
+            warnings.extend(thread_warnings)
+            return 0, 0, threads, warnings
 
     project = await project_repo.create(
         name=name,
@@ -234,16 +322,15 @@ async def _import_project(
         documents += 1
         logger.info("  output %r%s", title, "" if created else " (deduplicated)")
 
-    threads = 0
-    for thread_id in legacy.get("thread_ids") or []:
-        if not isinstance(thread_id, str) or not thread_id:
-            continue
-        bound = await thread_repo.set_project(thread_id, project_id, user_id=user_id)
-        if bound:
-            threads += 1
-            logger.info("  thread %s now belongs to project %s", thread_id, project_id)
-        else:
-            warnings.append(f"project {name!r}: thread {thread_id} was not attached (no such thread row, or it already belongs to another project)")
+    threads, thread_warnings = await _attach_threads(
+        thread_repo=thread_repo,
+        legacy=legacy,
+        project_id=project_id,
+        project_name=name,
+        user_id=user_id,
+        recover_thread=recover_thread,
+    )
+    warnings.extend(thread_warnings)
 
     return 1, documents, threads, warnings
 
@@ -257,12 +344,17 @@ async def import_legacy_projects(
     base_dir: Path,
     user_id: str,
     max_file_size: int = _DEFAULT_MAX_FILE_SIZE,
+    recover_thread: ThreadRecovery | None = None,
 ) -> LegacyImportReport:
     """Import every legacy project under ``base_dir`` into the SQL store.
 
     Idempotent: a project whose legacy id is already recorded in
     ``presentation`` is skipped, so running this twice imports nothing the
     second time.
+
+    ``recover_thread`` decides whether a conversation that lost its
+    ``threads_meta`` row is still recoverable from the checkpointer; when it
+    returns True the row is recreated and the thread attached.
     """
     report = LegacyImportReport()
     for legacy in _legacy_projects(base_dir):
@@ -275,6 +367,7 @@ async def import_legacy_projects(
             legacy=legacy,
             user_id=user_id,
             max_file_size=max_file_size,
+            recover_thread=recover_thread,
         )
         report.projects += projects
         report.documents += documents
@@ -339,6 +432,7 @@ async def _run(args: argparse.Namespace) -> int:
         base_dir=base_dir,
         user_id=user_id,
         max_file_size=max_file_size,
+        recover_thread=_thread_has_checkpoint,
     )
 
     for warning in report.warnings:
