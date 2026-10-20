@@ -115,6 +115,21 @@ uv run python scripts/migrate_legacy_projects.py             # import
 uv run python scripts/migrate_legacy_projects.py --user-id alice
 ```
 
+**Owner.** Upstream gives a project exactly one owner, and the owner is part of
+its storage path (`users/{user_id}/projects/{project_id}/`). A first import
+therefore uses `--user-id`, defaulting to the effective runtime user. When the
+real account only becomes known after the first sign-up — the Gateway's local
+auth always starts with a "create admin account" screen — import into a
+placeholder owner and move the data afterwards:
+
+```bash
+uv run python scripts/migrate_legacy_projects.py --user-id default
+uv run python scripts/migrate_legacy_projects.py --user-id <admin-uuid> --reassign-from default
+```
+
+The reassignment moves the project, its shelf documents and its conversations
+to the new owner, and moves the shelf on disk with them.
+
 Properties, mirroring `scripts/migrate_agents_to_db.py`:
 
 - **Explicit, operator-run** — nothing auto-imports on boot.

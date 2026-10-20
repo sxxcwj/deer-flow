@@ -69,6 +69,7 @@ async def env(tmp_path):
     legacy_root = tmp_path / "legacy"
     legacy_root.mkdir()
     yield {
+        "session_factory": session_factory,
         "projects": ProjectRepository(session_factory),
         "documents": ProjectDocumentRepository(session_factory),
         "threads": ThreadMetaRepository(session_factory),
@@ -78,10 +79,11 @@ async def env(tmp_path):
     await close_engine()
 
 
-async def _import(env, *, user_id: str = "u1", recover_thread=None):
+async def _import(env, *, user_id: str = "u1", recover_thread=None, reassign_from: str = ""):
     from scripts.migrate_legacy_projects import import_legacy_projects
 
     return await import_legacy_projects(
+        session_factory=env["session_factory"],
         project_repo=env["projects"],
         document_repo=env["documents"],
         thread_repo=env["threads"],
@@ -89,6 +91,7 @@ async def _import(env, *, user_id: str = "u1", recover_thread=None):
         base_dir=env["legacy_root"],
         user_id=user_id,
         recover_thread=recover_thread,
+        reassign_from=reassign_from,
     )
 
 
@@ -302,6 +305,50 @@ class TestImport:
 
         assert (report.projects, report.documents, report.threads) == (0, 0, 0)
         assert report.warnings == []
+
+
+class TestReassign:
+    async def test_project_moves_to_the_new_owner_with_its_shelf(self, env):
+        _seed_legacy(env["legacy_root"])
+        # A first import into a placeholder owner.
+        await _import(env, user_id="default")
+        project = (await env["projects"].list(user_id="default"))[0]
+        source_shelf = env["paths"].user_project_dir("default", project["id"]) / "documents"
+        assert source_shelf.is_dir()
+
+        report = await _import(env, user_id="alice", reassign_from="default")
+
+        assert report.reassigned == 1
+        assert report.projects == 0
+        assert await env["projects"].list(user_id="default") == []
+        moved = await env["projects"].list(user_id="alice")
+        assert len(moved) == 1
+        assert moved[0]["id"] == project["id"]
+        # The shelf follows the owner.
+        assert not source_shelf.exists()
+        assert (env["paths"].user_project_dir("alice", project["id"]) / "documents").is_dir()
+        documents = await env["documents"].list_active(project["id"], limit=10, offset=0, user_id="alice")
+        assert len(documents) == 2
+
+    async def test_threads_follow_the_project_to_the_new_owner(self, env):
+        _seed_legacy(env["legacy_root"], _legacy_payload(thread_ids=["thread-1"]))
+        await env["threads"].create("thread-1", user_id="default")
+        await _import(env, user_id="default")
+
+        await _import(env, user_id="alice", reassign_from="default")
+
+        thread = await env["threads"].get("thread-1", user_id="alice")
+        assert thread is not None
+        assert thread["user_id"] == "alice"
+
+    async def test_a_project_already_owned_by_the_target_is_left_alone(self, env):
+        _seed_legacy(env["legacy_root"])
+        await _import(env, user_id="alice")
+
+        report = await _import(env, user_id="alice", reassign_from="default")
+
+        assert report.reassigned == 0
+        assert len(await env["projects"].list(user_id="alice")) == 1
 
 
 class TestDryRun:

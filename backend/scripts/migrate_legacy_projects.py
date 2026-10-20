@@ -37,6 +37,7 @@ import argparse
 import asyncio
 import json
 import logging
+import shutil
 import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -81,6 +82,7 @@ class LegacyImportReport:
     projects: int = 0
     documents: int = 0
     threads: int = 0
+    reassigned: int = 0
     warnings: list[str] = field(default_factory=list)
 
 
@@ -375,8 +377,92 @@ async def _import_project(
     return 1, documents, threads, warnings
 
 
+def _presentation_legacy_id(raw: str) -> str | None:
+    """The legacy id inside a project's serialized ``presentation`` blob."""
+    try:
+        blob = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(blob, dict):
+        return None
+    legacy_id = blob.get(_LEGACY_PRESENTATION_KEY)
+    return legacy_id if isinstance(legacy_id, str) else None
+
+
+async def _reassign_project(
+    *,
+    session_factory: Any,
+    paths: Paths,
+    legacy: dict,
+    source_user_id: str,
+    target_user_id: str,
+) -> tuple[int, list[str]]:
+    """Move an already-imported project to another owner.
+
+    The owner of a project is part of its storage path
+    (``users/{user_id}/projects/{project_id}/``), so a reassignment moves the
+    shelf on disk as well as the rows that point at it. Used when the
+    imported owner was a placeholder (``default``) and the real account only
+    becomes known after the first sign-up.
+    """
+    from sqlalchemy import text
+
+    warnings: list[str] = []
+    legacy_id = str(legacy.get("id") or "")
+    name = str(legacy.get("name") or "").strip()
+    if not legacy_id or not name:
+        return 0, warnings
+
+    async with session_factory() as session:
+        rows = (
+            await session.execute(
+                text("SELECT id, user_id, presentation FROM projects"),
+            )
+        ).all()
+        # A raw text() query hands back the JSON column as a string, not as a
+        # dict, so the presentation blob is parsed here.
+        source_rows = [row for row in rows if isinstance(row[2], str) and _presentation_legacy_id(row[2]) == legacy_id]
+        source_rows += [row for row in rows if isinstance(row[2], dict) and row[2].get(_LEGACY_PRESENTATION_KEY) == legacy_id]
+        if not source_rows:
+            return 0, warnings
+        if any(row[1] == target_user_id for row in source_rows):
+            logger.info("project %r already belongs to %r", name, target_user_id)
+            return 0, warnings
+        source_rows = [row for row in source_rows if row[1] == source_user_id]
+        if not source_rows:
+            return 0, warnings
+
+        moved = 0
+        for project_id, owner, _presentation in source_rows:
+            source_dir = paths.user_project_dir(owner, project_id)
+            target_dir = paths.user_project_dir(target_user_id, project_id)
+            if source_dir.is_dir():
+                if target_dir.exists():
+                    warnings.append(f"project {name!r}: {target_dir} already exists — the shelf was left under {owner!r}")
+                    continue
+                target_dir.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(source_dir), str(target_dir))
+            await session.execute(
+                text("UPDATE projects SET user_id = :target WHERE id = :pid"),
+                {"target": target_user_id, "pid": project_id},
+            )
+            await session.execute(
+                text("UPDATE project_documents SET user_id = :target WHERE project_id = :pid"),
+                {"target": target_user_id, "pid": project_id},
+            )
+            await session.execute(
+                text("UPDATE threads_meta SET user_id = :target WHERE project_id = :pid"),
+                {"target": target_user_id, "pid": project_id},
+            )
+            moved += 1
+            logger.info("reassigned project %r (%s) from %r to %r", name, project_id, owner, target_user_id)
+        await session.commit()
+    return moved, warnings
+
+
 async def import_legacy_projects(
     *,
+    session_factory: Any,
     project_repo: ProjectRepository,
     document_repo: ProjectDocumentRepository,
     thread_repo: ThreadMetaRepository,
@@ -385,6 +471,7 @@ async def import_legacy_projects(
     user_id: str,
     max_file_size: int = _DEFAULT_MAX_FILE_SIZE,
     recover_thread: ThreadRecovery | None = None,
+    reassign_from: str = "",
 ) -> LegacyImportReport:
     """Import every legacy project under ``base_dir`` into the SQL store.
 
@@ -398,6 +485,20 @@ async def import_legacy_projects(
     """
     report = LegacyImportReport()
     for legacy in _legacy_projects(base_dir):
+        if reassign_from:
+            moved, move_warnings = await _reassign_project(
+                session_factory=session_factory,
+                paths=paths,
+                legacy=legacy,
+                source_user_id=reassign_from,
+                target_user_id=user_id,
+            )
+            report.reassigned += moved
+            report.warnings.extend(move_warnings)
+            if moved:
+                # The project now lives under the target owner; nothing left
+                # to import for it.
+                continue
         projects, documents, threads, warnings = await _import_project(
             project_repo=project_repo,
             document_repo=document_repo,
@@ -465,6 +566,7 @@ async def _run(args: argparse.Namespace) -> int:
     thread_repo = ThreadMetaRepository(session_factory)
 
     report = await import_legacy_projects(
+        session_factory=session_factory,
         project_repo=project_repo,
         document_repo=document_repo,
         thread_repo=thread_repo,
@@ -473,6 +575,7 @@ async def _run(args: argparse.Namespace) -> int:
         user_id=user_id,
         max_file_size=max_file_size,
         recover_thread=_recover_thread,
+        reassign_from=args.reassign_from,
     )
 
     for warning in report.warnings:
@@ -492,6 +595,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Import legacy JSON workbench projects into the SQL project store.")
     parser.add_argument("--dry-run", action="store_true", help="List what would be imported without writing to the database.")
     parser.add_argument("--user-id", default="", help="Owner for the imported projects (defaults to the effective runtime user).")
+    parser.add_argument(
+        "--reassign-from",
+        default="",
+        help="Move already-imported projects from this owner to --user-id (the shelf moves with them).",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
