@@ -61,11 +61,11 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to 🦌 DeerFlow, an open source super agent. With built-in and custom skills, DeerFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "This is the Changban workbench. Start with a question about organization, talent, or rewards, or pick up the last conversation.",
 
-    createYourOwnSkill: "Create Your Own Skill",
+    createYourOwnSkill: "Create a skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Write a repeated way of working as a skill, then use it in later conversations.",
   },
 
   // Clipboard
@@ -168,10 +168,97 @@ export const enUS: Translations = {
   // Sidebar
   sidebar: {
     newChat: "New chat",
+    home: "Home",
     chats: "Chats",
     recentChats: "Recent chats",
     demoChats: "Demo chats",
     agents: "Agents",
+    projects: "Projects",
+    methods: "Methods",
+  },
+
+  workbench: {
+    title: "Changban",
+    lede: "Start an organization conversation, or pick up the last one.",
+    newChat: "New chat",
+    newChatHint: "Ask about organization, talent, and incentives.",
+    agents: "Agents",
+    agentsHint: "Use a role you already defined, or make another.",
+    chats: "All chats",
+    chatsHint: "Return to an earlier thread.",
+    projects: "Projects",
+    projectsHint: "Keep track of work in progress. You name each one.",
+    methods: "Methods",
+    methodsHint: "Firm methods and templates, not tied to one project.",
+    recent: "Recent chats",
+    recentEmpty: "No chats yet. Start a new one.",
+  },
+
+  projects: {
+    title: "Projects",
+    description: "Only projects you add are stored here. Nothing is prefilled.",
+    namePlaceholder: "Project name",
+    summaryPlaceholder: "One-line note, optional",
+    add: "Add",
+    empty: "No projects yet.",
+    added: "Project added",
+    deleted: "Project deleted",
+    nameRequired: "Enter a project name",
+    chats: "Conversations",
+    chatsEmpty: "No conversations attached yet. Choose one below.",
+    attach: "Attach",
+    attached: "Conversation attached",
+    detached: "Removed from the project",
+    attachPlaceholder: "Choose an existing conversation",
+    noThreadsToAttach: "No other conversations to attach.",
+    continueChat: "Continue this conversation",
+    newChat: "New conversation",
+    back: "All projects",
+    missing: "This project could not be found.",
+    removeChat: "Remove",
+    chatCount: "{count} conversations",
+    outputs: "Outputs",
+    outputsEmpty:
+      "No outputs yet. Add a note. Files from attached conversations show up here too.",
+    outputTitlePlaceholder: "Title",
+    outputNotePlaceholder: "One-line note, optional",
+    addOutput: "Add",
+    outputAdded: "Saved",
+    outputDeleted: "Output removed",
+    outputTitleRequired: "Enter a title",
+    fromChat: "From a conversation",
+    materials: "Materials",
+    materialsEmpty:
+      "No materials yet. Uploaded files stay on this computer, and conversations in this project can use them.",
+    uploadMaterial: "Upload",
+    materialAdded: "Material added",
+    materialDeleted: "Material removed",
+    materialRejected:
+      "This file cannot be added. Use text, Markdown, PDF, Word, Excel, or PowerPoint, up to 10MB.",
+    keepMaterial: "Save as material",
+    materialKept: "Saved to materials",
+  },
+
+  methods: {
+    title: "Methods",
+    description: "Firm methods, not tied to one project. You write or upload them.",
+    titlePlaceholder: "Name, for example pay basis",
+    bodyPlaceholder: "Write the rule",
+    add: "Save",
+    empty: "No methods yet.",
+    added: "Saved",
+    deleted: "Removed",
+    titleRequired: "Enter a name",
+  },
+
+  search: {
+    placeholder: "Search projects, chats, materials, or methods",
+    empty: "No matches.",
+    project: "Project",
+    output: "Note",
+    material: "Material",
+    method: "Method",
+    chat: "Chat",
   },
 
   // Agents
@@ -208,17 +295,23 @@ export const enUS: Translations = {
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
-      "Save requested. DeerFlow is generating and saving an initial version now.",
+      "Save requested. An initial version is being generated and saved now.",
     saveHint:
       "You can save this agent at any time from the top-right menu, even if this is only a first draft.",
     saveCommandMessage:
       "Please save this custom agent now based on everything we have discussed so far. Treat this as my explicit confirmation to save. If some details are still missing, make reasonable assumptions, generate a concise first SOUL.md in English, and call setup_agent immediately without asking me for more confirmation.",
     agentCreatedPendingRefresh:
-      "The agent was created, but DeerFlow could not load it yet. Please refresh this page in a moment.",
+      "The agent was created, but it could not be loaded yet. Please refresh this page in a moment.",
     more: "More actions",
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
+    changeAvatar: "Change avatar",
+    avatarHint: "Use an emoji, or paste an http(s) image URL.",
+    avatarPlaceholder: "e.g. 🦌 or https://...",
+    avatarSaved: "Avatar updated",
+    avatarSaveFailed: "Could not update avatar",
+    avatarUseDefault: "Use default",
   },
 
   // Breadcrumb
@@ -229,13 +322,10 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "DeerFlow's official website",
-    githubTooltip: "DeerFlow on Github",
     settingsAndMore: "Settings and more",
-    visitGithub: "DeerFlow on GitHub",
-    reportIssue: "Report a issue",
-    contactUs: "Contact us",
-    about: "About DeerFlow",
+    contactUs: "Contact",
+    phone: "Phone",
+    about: "About Changban",
   },
 
   // Conversation
@@ -251,7 +341,7 @@ export const enUS: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "Changban",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -277,7 +367,7 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to DeerFlow",
+    skillInstallTooltip: "Install this skill so later conversations can use it",
   },
 
   // Subtasks
@@ -314,7 +404,7 @@ export const enUS: Translations = {
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
     keyboardShortcutsDescription:
-      "Navigate DeerFlow faster with keyboard shortcuts.",
+      "Use keyboard shortcuts to move around the workbench faster.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
@@ -322,7 +412,7 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how DeerFlow looks and behaves for you.",
+    description: "Adjust how the workbench looks and behaves for you.",
     sections: {
       appearance: "Appearance",
       memory: "Memory",
@@ -334,7 +424,7 @@ export const enUS: Translations = {
     memory: {
       title: "Memory",
       description:
-        "DeerFlow automatically learns from your conversations in the background. These memories help DeerFlow understand you better and deliver a more personalized experience.",
+        "The workbench keeps notes from your conversations in the background, so later chats can pick up where you left off.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -434,18 +524,18 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
+        "Put skill folders in `/skills/custom` under the workbench root.",
       emptyButton: "Create Your First Skill",
     },
     notification: {
       title: "Notification",
       description:
-        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "A completion notice is sent only when the window is not active. Useful for long tasks: switch away, and you will be notified when it finishes.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "DeerFlow",
+      testTitle: "Changban",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",

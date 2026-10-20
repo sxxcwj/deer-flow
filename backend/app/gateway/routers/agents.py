@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from deerflow.config.agents_api_config import get_agents_api_config
-from deerflow.config.agents_config import AgentConfig, list_custom_agents, load_agent_config, load_agent_soul
+from deerflow.config.agents_config import AgentConfig, list_custom_agents, load_agent_config, load_agent_soul, normalize_avatar
 from deerflow.config.paths import get_paths
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ class AgentResponse(BaseModel):
     description: str = Field(default="", description="Agent description")
     model: str | None = Field(default=None, description="Optional model override")
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
+    avatar: str | None = Field(default=None, description="Emoji or http(s) image URL")
     soul: str | None = Field(default=None, description="SOUL.md content")
 
 
@@ -41,6 +42,7 @@ class AgentCreateRequest(BaseModel):
     description: str = Field(default="", description="Agent description")
     model: str | None = Field(default=None, description="Optional model override")
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
+    avatar: str | None = Field(default=None, description="Emoji or http(s) image URL")
     soul: str = Field(default="", description="SOUL.md content — agent personality and behavioral guardrails")
 
 
@@ -50,6 +52,7 @@ class AgentUpdateRequest(BaseModel):
     description: str | None = Field(default=None, description="Updated description")
     model: str | None = Field(default=None, description="Updated model override")
     tool_groups: list[str] | None = Field(default=None, description="Updated tool group whitelist")
+    avatar: str | None = Field(default=None, description="Updated emoji or image URL; empty string clears it")
     soul: str | None = Field(default=None, description="Updated SOUL.md content")
 
 
@@ -94,8 +97,26 @@ def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False
         description=agent_cfg.description,
         model=agent_cfg.model,
         tool_groups=agent_cfg.tool_groups,
+        avatar=agent_cfg.avatar,
         soul=soul,
     )
+
+
+def _write_agent_config(agent_dir, agent_cfg: AgentConfig) -> None:
+    """Persist an agent config without dropping fields that were not edited."""
+    config_data: dict = {"name": agent_cfg.name, "description": agent_cfg.description}
+    if agent_cfg.model is not None:
+        config_data["model"] = agent_cfg.model
+    if agent_cfg.tool_groups is not None:
+        config_data["tool_groups"] = agent_cfg.tool_groups
+    if agent_cfg.skills is not None:
+        config_data["skills"] = agent_cfg.skills
+    if agent_cfg.avatar:
+        config_data["avatar"] = agent_cfg.avatar
+
+    config_file = agent_dir / "config.yaml"
+    with open(config_file, "w", encoding="utf-8") as f:
+        yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True)
 
 
 @router.get(
@@ -204,6 +225,13 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
     if agent_dir.exists():
         raise HTTPException(status_code=409, detail=f"Agent '{normalized_name}' already exists")
 
+    avatar = None
+    if request.avatar:
+        try:
+            avatar = normalize_avatar(request.avatar)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     try:
         agent_dir.mkdir(parents=True, exist_ok=True)
 
@@ -215,6 +243,8 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
             config_data["model"] = request.model
         if request.tool_groups is not None:
             config_data["tool_groups"] = request.tool_groups
+        if avatar:
+            config_data["avatar"] = avatar
 
         config_file = agent_dir / "config.yaml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -270,25 +300,26 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
     agent_dir = get_paths().agent_dir(name)
 
     try:
-        # Update config if any config fields changed
-        config_changed = any(v is not None for v in [request.description, request.model, request.tool_groups])
+        updated_cfg = agent_cfg
+        config_changed = False
+        if request.description is not None:
+            updated_cfg = updated_cfg.model_copy(update={"description": request.description})
+            config_changed = True
+        if request.model is not None:
+            updated_cfg = updated_cfg.model_copy(update={"model": request.model})
+            config_changed = True
+        if request.tool_groups is not None:
+            updated_cfg = updated_cfg.model_copy(update={"tool_groups": request.tool_groups})
+            config_changed = True
+        if request.avatar is not None:
+            try:
+                updated_cfg = updated_cfg.model_copy(update={"avatar": normalize_avatar(request.avatar)})
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            config_changed = True
 
         if config_changed:
-            updated: dict = {
-                "name": agent_cfg.name,
-                "description": request.description if request.description is not None else agent_cfg.description,
-            }
-            new_model = request.model if request.model is not None else agent_cfg.model
-            if new_model is not None:
-                updated["model"] = new_model
-
-            new_tool_groups = request.tool_groups if request.tool_groups is not None else agent_cfg.tool_groups
-            if new_tool_groups is not None:
-                updated["tool_groups"] = new_tool_groups
-
-            config_file = agent_dir / "config.yaml"
-            with open(config_file, "w", encoding="utf-8") as f:
-                yaml.dump(updated, f, default_flow_style=False, allow_unicode=True)
+            _write_agent_config(agent_dir, updated_cfg)
 
         # Update SOUL.md if provided
         if request.soul is not None:

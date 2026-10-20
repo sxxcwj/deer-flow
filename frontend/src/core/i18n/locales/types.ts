@@ -113,9 +113,93 @@ export interface Translations {
   sidebar: {
     recentChats: string;
     newChat: string;
+    home: string;
     chats: string;
     demoChats: string;
     agents: string;
+    projects: string;
+    methods: string;
+  };
+
+  workbench: {
+    title: string;
+    lede: string;
+    newChat: string;
+    newChatHint: string;
+    agents: string;
+    agentsHint: string;
+    chats: string;
+    chatsHint: string;
+    projects: string;
+    projectsHint: string;
+    methods: string;
+    methodsHint: string;
+    recent: string;
+    recentEmpty: string;
+  };
+
+  projects: {
+    title: string;
+    description: string;
+    namePlaceholder: string;
+    summaryPlaceholder: string;
+    add: string;
+    empty: string;
+    added: string;
+    deleted: string;
+    nameRequired: string;
+    chats: string;
+    chatsEmpty: string;
+    attach: string;
+    attached: string;
+    detached: string;
+    attachPlaceholder: string;
+    noThreadsToAttach: string;
+    continueChat: string;
+    newChat: string;
+    back: string;
+    missing: string;
+    removeChat: string;
+    chatCount: string;
+    outputs: string;
+    outputsEmpty: string;
+    outputTitlePlaceholder: string;
+    outputNotePlaceholder: string;
+    addOutput: string;
+    outputAdded: string;
+    outputDeleted: string;
+    outputTitleRequired: string;
+    fromChat: string;
+    materials: string;
+    materialsEmpty: string;
+    uploadMaterial: string;
+    materialAdded: string;
+    materialDeleted: string;
+    materialRejected: string;
+    keepMaterial: string;
+    materialKept: string;
+  };
+
+  methods: {
+    title: string;
+    description: string;
+    titlePlaceholder: string;
+    bodyPlaceholder: string;
+    add: string;
+    empty: string;
+    added: string;
+    deleted: string;
+    titleRequired: string;
+  };
+
+  search: {
+    placeholder: string;
+    empty: string;
+    project: string;
+    output: string;
+    material: string;
+    method: string;
+    chat: string;
   };
 
   // Agents
@@ -151,6 +235,12 @@ export interface Translations {
     agentCreated: string;
     startChatting: string;
     backToGallery: string;
+    changeAvatar: string;
+    avatarHint: string;
+    avatarPlaceholder: string;
+    avatarSaved: string;
+    avatarSaveFailed: string;
+    avatarUseDefault: string;
   };
 
   // Breadcrumb
@@ -161,12 +251,9 @@ export interface Translations {
 
   // Workspace
   workspace: {
-    officialWebsite: string;
-    githubTooltip: string;
     settingsAndMore: string;
-    visitGithub: string;
-    reportIssue: string;
     contactUs: string;
+    phone: string;
     about: string;
   };
 

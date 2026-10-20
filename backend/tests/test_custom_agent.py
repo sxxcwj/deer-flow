@@ -495,6 +495,43 @@ class TestAgentsAPI:
         assert response.status_code == 200
         assert response.json()["soul"] == "updated"
 
+    def test_update_agent_avatar(self, agent_client, tmp_path):
+        created = agent_client.post("/api/agents", json={"name": "face-agent", "description": "old", "soul": "p"})
+        assert created.status_code == 201
+
+        response = agent_client.put("/api/agents/face-agent", json={"avatar": "🦌"})
+        assert response.status_code == 200
+        assert response.json()["avatar"] == "🦌"
+
+        config = yaml.safe_load((tmp_path / "agents" / "face-agent" / "config.yaml").read_text())
+        assert config["avatar"] == "🦌"
+
+        image = agent_client.put("/api/agents/face-agent", json={"avatar": "https://example.com/face.png"})
+        assert image.status_code == 200
+        assert image.json()["avatar"] == "https://example.com/face.png"
+
+        cleared = agent_client.put("/api/agents/face-agent", json={"avatar": ""})
+        assert cleared.status_code == 200
+        assert cleared.json()["avatar"] is None
+
+        invalid = agent_client.put("/api/agents/face-agent", json={"avatar": "javascript:alert(1)"})
+        assert invalid.status_code == 422
+
+    def test_update_description_keeps_avatar_and_skills(self, agent_client, tmp_path):
+        agent_dir = tmp_path / "agents" / "keep-agent"
+        agent_dir.mkdir(parents=True)
+        (agent_dir / "config.yaml").write_text("name: keep-agent\ndescription: old\navatar: 🦊\nskills: []\n", encoding="utf-8")
+        (agent_dir / "SOUL.md").write_text("soul", encoding="utf-8")
+
+        response = agent_client.put("/api/agents/keep-agent", json={"description": "new"})
+        assert response.status_code == 200
+        assert response.json()["avatar"] == "🦊"
+        assert response.json()["description"] == "new"
+
+        config = yaml.safe_load((agent_dir / "config.yaml").read_text())
+        assert config["avatar"] == "🦊"
+        assert config["skills"] == []
+
     def test_update_agent_description(self, agent_client):
         agent_client.post("/api/agents", json={"name": "desc-agent", "description": "old desc", "soul": "p"})
 

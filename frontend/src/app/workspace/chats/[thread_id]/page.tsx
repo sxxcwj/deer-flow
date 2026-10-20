@@ -1,6 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
@@ -24,6 +26,7 @@ import { Welcome } from "@/components/workspace/welcome";
 import { useI18n } from "@/core/i18n/hooks";
 import { useModels } from "@/core/models/hooks";
 import { useNotification } from "@/core/notification/hooks";
+import { useAttachProjectThread } from "@/core/projects/hooks";
 import { useThreadSettings } from "@/core/settings";
 import { useThreadStream } from "@/core/threads/hooks";
 import { textOfMessage } from "@/core/threads/utils";
@@ -35,6 +38,8 @@ export default function ChatPage() {
   const [showFollowups, setShowFollowups] = useState(false);
   const { threadId, setThreadId, isNewThread, setIsNewThread, isMock } =
     useThreadChat();
+  const projectId = useSearchParams().get("project");
+  const attachToProject = useAttachProjectThread();
   const [settings, setSettings] = useThreadSettings(threadId);
   const [mounted, setMounted] = useState(false);
   const { tokenUsageEnabled } = useModels();
@@ -48,13 +53,23 @@ export default function ChatPage() {
 
   const [thread, sendMessage, isUploading] = useThreadStream({
     threadId: isNewThread ? undefined : threadId,
-    context: settings.context,
+    context: {
+      ...settings.context,
+      ...(projectId ? { project_id: projectId } : {}),
+    },
     isMock,
     onStart: (createdThreadId) => {
       setThreadId(createdThreadId);
       setIsNewThread(false);
       // ! Important: Never use next.js router for navigation in this case, otherwise it will cause the thread to re-mount and lose all states. Use native history API instead.
       history.replaceState(null, "", `/workspace/chats/${createdThreadId}`);
+      if (projectId) {
+        void attachToProject
+          .mutateAsync({ id: projectId, threadId: createdThreadId })
+          .catch((err: unknown) => {
+            toast.error(err instanceof Error ? err.message : String(err));
+          });
+      }
     },
     onFinish: (state) => {
       if (document.hidden || !document.hasFocus()) {

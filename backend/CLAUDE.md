@@ -32,9 +32,11 @@ deer-flow/
 │   │       └── deerflow/
 │   │           ├── agents/            # LangGraph agent system
 │   │           │   ├── lead_agent/    # Main agent (factory + system prompt)
-│   │           │   ├── middlewares/   # 10 middleware components
+│   │           │   ├── middlewares/   # 19 middleware components
 │   │           │   ├── memory/        # Memory extraction, queue, prompts
 │   │           │   └── thread_state.py # ThreadState schema
+│   │           ├── projects/          # Workbench projects (read-only brief for the agent)
+│   │           ├── methods/           # Firm methods (read-only brief for the agent)
 │   │           ├── sandbox/           # Sandbox execution system
 │   │           │   ├── local/         # Local filesystem provider
 │   │           │   ├── sandbox.py     # Abstract Sandbox interface
@@ -56,7 +58,7 @@ deer-flow/
 │   ├── app/                   # Application layer (import: app.*)
 │   │   ├── gateway/           # FastAPI Gateway API
 │   │   │   ├── app.py         # FastAPI application
-│   │   │   └── routers/       # FastAPI route modules (models, mcp, memory, skills, uploads, threads, artifacts, agents, suggestions, channels)
+│   │   │   └── routers/       # FastAPI route modules (models, mcp, memory, skills, uploads, threads, artifacts, agents, suggestions, channels, projects, methods, search)
 │   │   └── channels/          # IM platform integrations
 │   ├── tests/                 # Test suite
 │   └── docs/                  # Documentation
@@ -160,22 +162,23 @@ Lead-agent middlewares are assembled in strict append order across `packages/har
 
 1. **ThreadDataMiddleware** - Creates per-thread directories (`backend/.deer-flow/threads/{thread_id}/user-data/{workspace,uploads,outputs}`); Web UI thread deletion now follows LangGraph thread removal with Gateway cleanup of the local `.deer-flow/threads/{thread_id}` directory
 2. **UploadsMiddleware** - Tracks and injects newly uploaded files into conversation
-3. **SandboxMiddleware** - Acquires sandbox, stores `sandbox_id` in state
-4. **DanglingToolCallMiddleware** - Injects placeholder ToolMessages for AIMessage tool_calls that lack responses (e.g., due to user interruption), including raw provider tool-call payloads preserved only in `additional_kwargs["tool_calls"]`
-5. **LLMErrorHandlingMiddleware** - Normalizes provider/model invocation failures into recoverable assistant-facing errors before later middleware/tool stages run
-6. **GuardrailMiddleware** - Pre-tool-call authorization via pluggable `GuardrailProvider` protocol (optional, if `guardrails.enabled` in config). Evaluates each tool call and returns error ToolMessage on deny. Three provider options: built-in `AllowlistProvider` (zero deps), OAP policy providers (e.g. `aport-agent-guardrails`), or custom providers. See [docs/GUARDRAILS.md](docs/GUARDRAILS.md) for setup, usage, and how to implement a provider.
-7. **SandboxAuditMiddleware** - Audits sandboxed shell/file operations for security logging before tool execution continues
-8. **ToolErrorHandlingMiddleware** - Converts tool exceptions into error `ToolMessage`s so the run can continue instead of aborting
-9. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
-10. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
-11. **TokenUsageMiddleware** - Records token usage metrics when token tracking is enabled (optional)
-12. **TitleMiddleware** - Auto-generates thread title after first complete exchange and normalizes structured message content before prompting the title model
-13. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
-14. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
-15. **DeferredToolFilterMiddleware** - Hides deferred tool schemas from the bound model until tool search is enabled (optional)
-16. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if `subagent_enabled`)
-17. **LoopDetectionMiddleware** - Detects repeated tool-call loops; hard-stop responses clear both structured `tool_calls` and raw provider tool-call metadata before forcing a final text answer
-18. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
+3. **ProjectContextMiddleware** - Attaches bounded context briefs to the latest user message of the outgoing model request: firm-wide methods (`<method_context>`, up to 4000 chars) and the project brief (`<project_context>`, up to 6000 chars) resolved from `thread_id` → `projects.json` (`thread_ids`) or an explicit `project_id`. Implemented as `wrap_model_call`, so the brief reaches the model but is **never written to conversation state** — a long thread keeps one copy per request instead of one copy per turn. Lead agent only — subagents do not receive it. Legacy threads that already carry the tags in their history still need the UI strip in `stripUploadedFilesTag` (`frontend/src/core/messages/utils.ts`)
+4. **SandboxMiddleware** - Acquires sandbox, stores `sandbox_id` in state
+5. **DanglingToolCallMiddleware** - Injects placeholder ToolMessages for AIMessage tool_calls that lack responses (e.g., due to user interruption), including raw provider tool-call payloads preserved only in `additional_kwargs["tool_calls"]`
+6. **LLMErrorHandlingMiddleware** - Normalizes provider/model invocation failures into recoverable assistant-facing errors before later middleware/tool stages run
+7. **GuardrailMiddleware** - Pre-tool-call authorization via pluggable `GuardrailProvider` protocol (optional, if `guardrails.enabled` in config). Evaluates each tool call and returns error ToolMessage on deny. Three provider options: built-in `AllowlistProvider` (zero deps), OAP policy providers (e.g. `aport-agent-guardrails`), or custom providers. See [docs/GUARDRAILS.md](docs/GUARDRAILS.md) for setup, usage, and how to implement a provider.
+8. **SandboxAuditMiddleware** - Audits sandboxed shell/file operations for security logging before tool execution continues
+9. **ToolErrorHandlingMiddleware** - Converts tool exceptions into error `ToolMessage`s so the run can continue instead of aborting
+10. **SummarizationMiddleware** - Context reduction when approaching token limits (optional, if enabled)
+11. **TodoListMiddleware** - Task tracking with `write_todos` tool (optional, if plan_mode)
+12. **TokenUsageMiddleware** - Records token usage metrics when token tracking is enabled (optional)
+13. **TitleMiddleware** - Auto-generates thread title after first complete exchange and normalizes structured message content before prompting the title model
+14. **MemoryMiddleware** - Queues conversations for async memory update (filters to user + final AI responses)
+15. **ViewImageMiddleware** - Injects base64 image data before LLM call (conditional on vision support)
+16. **DeferredToolFilterMiddleware** - Hides deferred tool schemas from the bound model until tool search is enabled (optional)
+17. **SubagentLimitMiddleware** - Truncates excess `task` tool calls from model response to enforce `MAX_CONCURRENT_SUBAGENTS` limit (optional, if `subagent_enabled`)
+18. **LoopDetectionMiddleware** - Detects repeated tool-call loops; hard-stop responses clear both structured `tool_calls` and raw provider tool-call metadata before forcing a final text answer
+19. **ClarificationMiddleware** - Intercepts `ask_clarification` tool calls, interrupts via `Command(goto=END)` (must be last)
 
 ### Configuration System
 
@@ -222,8 +225,26 @@ FastAPI application on port 8001 with health check at `GET /health`.
 | **Threads** (`/api/threads/{id}`) | `DELETE /` - remove DeerFlow-managed local thread data after LangGraph thread deletion; unexpected failures are logged server-side and return a generic 500 detail |
 | **Artifacts** (`/api/threads/{id}/artifacts`) | `GET /{path}` - serve artifacts; active content types (`text/html`, `application/xhtml+xml`, `image/svg+xml`) are always forced as download attachments to reduce XSS risk; `?download=true` still forces download for other file types |
 | **Suggestions** (`/api/threads/{id}/suggestions`) | `POST /` - generate follow-up questions; rich list/block model content is normalized before JSON parsing |
+| **Projects** (`/api/projects`) | `GET /` - list workbench projects; `POST /` - create; `GET /{id}` - detail; `DELETE /{id}` - delete; `PUT /{id}/threads` - attach/detach chats; `DELETE /{id}/threads/{thread_id}` - detach one chat; `POST /{id}/outputs` - record a deliverable; `DELETE /{id}/outputs/{output_id}`; `POST /{id}/materials` - upload material (auto-converted to markdown); `POST /{id}/materials/from-chat` - adopt a chat artifact as material; `GET /{id}/materials/{material_id}` - download; `DELETE /{id}/materials/{material_id}` |
+| **Methods** (`/api/methods`) | `GET /` - list firm methods; `POST /` - create; `DELETE /{id}` - delete; `GET /{id}/file` - download attached file. Stored in `methods.json` + `methods/{id}.excerpt.txt` and surfaced to the agent through `ProjectContextMiddleware` |
+| **Search** (`/api/search`) | `GET /` - local text search across projects, outputs, materials, methods and chat titles; `kind` filters the result set |
 
 Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → Gateway.
+
+### Workbench Data
+
+The workbench keeps its own local state under `{base_dir}` (resolved by `deerflow.config.paths.get_paths()`: explicit argument → `DEER_FLOW_HOME` → default local dir).
+
+| Path | Written by | Read by |
+|------|-----------|---------|
+| `{base_dir}/projects.json` | `Projects` router | `deerflow.projects.brief` (agent context) |
+| `{base_dir}/projects/{project_id}/materials/` | `Projects` router (uploads, converted to markdown) | `deerflow.projects.brief` (excerpts) |
+| `{base_dir}/methods.json` | `Methods` router | `deerflow.methods.brief` (agent context) |
+| `{base_dir}/methods/{method_id}.excerpt.txt` | `Methods` router | `deerflow.methods.brief` (excerpts) |
+
+**Boundary rule**: the `deerflow.projects` / `deerflow.methods` packages are read-only and must not import from `app.*` — the Gateway owns all writes. This keeps the harness publishable and satisfies `tests/test_harness_boundary.py`.
+
+Both briefs are bounded (methods ≤ 4000 chars, projects ≤ 6000 chars) and injected by `ProjectContextMiddleware` as `<method_context>` / `<project_context>` blocks.
 
 ### Sandbox System (`packages/harness/deerflow/sandbox/`)
 

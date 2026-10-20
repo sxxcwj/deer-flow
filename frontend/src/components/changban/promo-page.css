@@ -1,0 +1,364 @@
+.cb {
+  --ink: #1a1612;
+  --muted: #6d6458;
+  --paper: #f3eee4;
+  --paper-2: #e7e0d2;
+  --indigo: #001a6c;
+  --seal: #8e2a1f;
+  --line: rgba(26, 22, 18, 0.16);
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 12% -10%, rgba(0, 26, 108, 0.08), transparent 42%),
+    radial-gradient(ellipse at 100% 0%, rgba(142, 42, 31, 0.08), transparent 36%),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-cb-serif), "Songti SC", "Noto Serif SC", serif;
+  font-weight: 500;
+}
+
+.cb * {
+  box-sizing: border-box;
+}
+
+.cb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cb-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.1rem 6vw;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+}
+
+.cb-mark {
+  font-size: 1.05rem;
+  letter-spacing: 0.22em;
+}
+
+.cb-nav nav {
+  display: flex;
+  gap: 1.35rem;
+  font-family: var(--font-cb-display), "Iowan Old Style", Georgia, serif;
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.cb-nav nav a:hover {
+  color: var(--seal);
+}
+
+.cb-hero {
+  position: relative;
+  display: grid;
+  min-height: calc(100vh - 4rem);
+  padding: 8vh 6vw 4rem 9vw;
+  align-content: end;
+}
+
+.cb-spine {
+  position: absolute;
+  top: 12vh;
+  left: 1.6rem;
+  margin: 0;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-family: var(--font-cb-display), Georgia, serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--indigo);
+}
+
+.cb-kicker {
+  margin: 0 0 1.4rem;
+  letter-spacing: 0.28em;
+  font-size: 0.82rem;
+  color: var(--indigo);
+}
+
+.cb-hero h1 {
+  max-width: 11em;
+  margin: 0;
+  font-size: clamp(2.7rem, 6.4vw, 6.1rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  animation: cb-rise 0.9s ease both;
+}
+
+.cb-lede {
+  max-width: 36rem;
+  margin: 1.8rem 0 0;
+  font-size: 1.15rem;
+  line-height: 1.85;
+  color: var(--muted);
+  animation: cb-rise 0.9s 0.12s ease both;
+}
+
+.cb-seal {
+  position: absolute;
+  top: 18vh;
+  right: 9vw;
+  display: grid;
+  width: 7.2rem;
+  height: 7.2rem;
+  place-items: center;
+  border: 2px solid var(--seal);
+  color: var(--seal);
+  transform: rotate(-8deg);
+}
+
+.cb-seal span,
+.cb-seal small {
+  grid-area: 1 / 1;
+  letter-spacing: 0.35em;
+}
+
+.cb-seal span {
+  font-size: 1.35rem;
+  transform: translateY(-0.7rem);
+}
+
+.cb-seal small {
+  font-size: 0.78rem;
+  letter-spacing: 0.42em;
+  transform: translateY(0.95rem);
+}
+
+.cb-seal:hover {
+  background: var(--seal);
+  color: var(--paper);
+}
+
+.cb-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.6rem;
+  margin: 4.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  letter-spacing: 0.18em;
+  font-size: 0.92rem;
+}
+
+.cb-values li::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.55rem;
+  background: var(--seal);
+  transform: translateY(-0.12rem) rotate(45deg);
+}
+
+.cb-section,
+.cb-method,
+.cb footer {
+  padding: 5.5rem 6vw 5.5rem 9vw;
+}
+
+.cb-section-head {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+  align-items: baseline;
+}
+
+.cb-section-head p,
+.cb-method > p,
+.cb footer > p:first-child {
+  margin: 0;
+  letter-spacing: 0.22em;
+  color: var(--seal);
+  font-size: 0.85rem;
+}
+
+.cb-section-head h2,
+.cb-method blockquote {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.cb-section ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.cb-section li {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 1rem;
+  padding: 1.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cb-section li span {
+  font-family: var(--font-cb-display), Georgia, serif;
+  font-style: italic;
+  font-size: 1.4rem;
+  color: var(--indigo);
+}
+
+.cb-section h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.45rem;
+  font-weight: 600;
+}
+
+.cb-section li p,
+.cb-practice article p:last-child,
+.cb-method div p {
+  margin: 0;
+  max-width: 40rem;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.cb-practice-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 1.2rem;
+}
+
+.cb-practice article {
+  min-height: 18rem;
+  padding: 1.6rem 1.4rem;
+  background: color-mix(in srgb, var(--paper-2) 70%, transparent);
+}
+
+.cb-practice article:first-child {
+  background: var(--indigo);
+  color: #f6f1e7;
+}
+
+.cb-practice article:first-child p:last-child {
+  color: rgba(246, 241, 231, 0.78);
+}
+
+.cb-practice article > p:first-child {
+  margin: 0 0 2.5rem;
+  font-family: var(--font-cb-display), Georgia, serif;
+  font-style: italic;
+  letter-spacing: 0.12em;
+}
+
+.cb-practice h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.7rem;
+  font-weight: 600;
+}
+
+.cb-method {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 1.5rem 2rem;
+  align-items: start;
+  background: #ebe4d6;
+}
+
+.cb-method blockquote,
+.cb-method div {
+  grid-column: 2;
+}
+
+.cb-method blockquote {
+  margin: 0;
+  max-width: 16em;
+}
+
+.cb-method div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2rem;
+  max-width: 52rem;
+}
+
+.cb footer {
+  display: grid;
+  gap: 0.45rem;
+  padding-bottom: 4rem;
+}
+
+.cb footer a {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cb footer a:hover {
+  color: var(--seal);
+}
+
+.cb footer small {
+  margin-top: 1.5rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+@keyframes cb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .cb-spine {
+    display: none;
+  }
+
+  .cb-nav,
+  .cb-hero,
+  .cb-section,
+  .cb-method,
+  .cb footer {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .cb-nav nav {
+    gap: 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .cb-seal {
+    position: static;
+    margin-top: 2rem;
+  }
+
+  .cb-section-head,
+  .cb-section li,
+  .cb-method,
+  .cb-method div,
+  .cb-practice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cb-practice article {
+    min-height: 0;
+  }
+
+  .cb-method blockquote,
+  .cb-method div {
+    grid-column: auto;
+  }
+}

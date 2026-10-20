@@ -13,8 +13,11 @@ from app.gateway.routers import (
     channels,
     mcp,
     memory,
+    methods,
     models,
+    projects,
     runs,
+    search,
     skills,
     suggestions,
     thread_runs,
@@ -189,6 +192,11 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # Agents API is mounted at /api/agents
     app.include_router(agents.router)
+
+    # Workbench projects, stored locally and entered by the user
+    app.include_router(projects.router)
+    app.include_router(methods.router)
+    app.include_router(search.router)
 
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)

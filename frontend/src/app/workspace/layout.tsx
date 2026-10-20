@@ -1,10 +1,13 @@
+import { type Metadata } from "next";
 import { cookies } from "next/headers";
+import type { CSSProperties } from "react";
 import { Toaster } from "sonner";
 
 import { QueryClientProvider } from "@/components/query-client-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { CommandPalette } from "@/components/workspace/command-palette";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
+import "@/components/workspace/workbench-shell.css";
 
 function parseSidebarOpenCookie(
   value: string | undefined,
@@ -13,6 +16,10 @@ function parseSidebarOpenCookie(
   if (value === "false") return false;
   return undefined;
 }
+
+export const metadata: Metadata = {
+  title: "长伴咨询",
+};
 
 export default async function WorkspaceLayout({
   children,
@@ -24,7 +31,11 @@ export default async function WorkspaceLayout({
 
   return (
     <QueryClientProvider>
-      <SidebarProvider className="h-screen" defaultOpen={initialSidebarOpen}>
+      <SidebarProvider
+        className="cb-shell h-screen"
+        style={{ "--sidebar-width": "232px" } as CSSProperties}
+        defaultOpen={initialSidebarOpen}
+      >
         <WorkspaceSidebar />
         <SidebarInset className="min-w-0">{children}</SidebarInset>
       </SidebarProvider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, MessagesSquare } from "lucide-react";
+import { BookOpenIcon, BotIcon, FolderKanbanIcon, HouseIcon, MessagesSquare } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -19,10 +19,40 @@ export function WorkspaceNavChatList() {
     <SidebarGroup className="pt-1">
       <SidebarMenu>
         <SidebarMenuItem>
+          <SidebarMenuButton isActive={pathname === "/workspace"} asChild>
+            <Link href="/workspace">
+              <HouseIcon />
+              <span>{t.sidebar.home}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
           <SidebarMenuButton isActive={pathname === "/workspace/chats"} asChild>
-            <Link className="text-muted-foreground" href="/workspace/chats">
+            <Link href="/workspace/chats">
               <MessagesSquare />
               <span>{t.sidebar.chats}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={pathname.startsWith("/workspace/projects")}
+            asChild
+          >
+            <Link href="/workspace/projects">
+              <FolderKanbanIcon />
+              <span>{t.sidebar.projects}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={pathname.startsWith("/workspace/methods")}
+            asChild
+          >
+            <Link href="/workspace/methods">
+              <BookOpenIcon />
+              <span>{t.sidebar.methods}</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -31,7 +61,7 @@ export function WorkspaceNavChatList() {
             isActive={pathname.startsWith("/workspace/agents")}
             asChild
           >
-            <Link className="text-muted-foreground" href="/workspace/agents">
+            <Link href="/workspace/agents">
               <BotIcon />
               <span>{t.sidebar.agents}</span>
             </Link>

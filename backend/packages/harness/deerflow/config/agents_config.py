@@ -3,6 +3,7 @@
 import logging
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel
@@ -26,6 +27,25 @@ def validate_agent_name(name: str | None) -> str | None:
     return name
 
 
+def normalize_avatar(avatar: str | None) -> str | None:
+    """Accept a short emoji or an http(s) image URL. Blank clears the avatar."""
+    if avatar is None:
+        return None
+    value = avatar.strip()
+    if not value:
+        return None
+    if any(ord(char) < 32 for char in value):
+        raise ValueError("Avatar contains invalid characters.")
+    if ":" in value or value.startswith("//"):
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or len(value) > 2048:
+            raise ValueError("Avatar image must be an http or https URL.")
+        return value
+    if len(value) > 32:
+        raise ValueError("Avatar must be a short emoji or an http(s) image URL.")
+    return value
+
+
 class AgentConfig(BaseModel):
     """Configuration for a custom agent."""
 
@@ -33,6 +53,7 @@ class AgentConfig(BaseModel):
     description: str = ""
     model: str | None = None
     tool_groups: list[str] | None = None
+    avatar: str | None = None
     # skills controls which skills are loaded into the agent's prompt:
     # - None (or omitted): load all enabled skills (default fallback behavior)
     # - [] (explicit empty list): disable all skills

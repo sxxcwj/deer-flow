@@ -127,11 +127,15 @@ def _build_runtime_middlewares(
 
 def build_lead_runtime_middlewares(*, lazy_init: bool = True) -> list[AgentMiddleware]:
     """Middlewares shared by lead agent runtime before lead-only middlewares."""
-    return _build_runtime_middlewares(
+    middlewares = _build_runtime_middlewares(
         include_uploads=True,
         include_dangling_tool_call_patch=True,
         lazy_init=lazy_init,
     )
+    from deerflow.agents.middlewares.project_context_middleware import ProjectContextMiddleware
+
+    middlewares.insert(2, ProjectContextMiddleware())
+    return middlewares
 
 
 def build_subagent_runtime_middlewares(*, lazy_init: bool = True) -> list[AgentMiddleware]:

@@ -41,6 +41,13 @@ def setup_agent(
                 config_data["description"] = description
 
             config_file = agent_dir / "config.yaml"
+            if config_file.exists():
+                try:
+                    existing = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
+                except yaml.YAMLError:
+                    existing = {}
+                if isinstance(existing, dict) and existing.get("avatar"):
+                    config_data["avatar"] = existing["avatar"]
             with open(config_file, "w", encoding="utf-8") as f:
                 yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True)
 

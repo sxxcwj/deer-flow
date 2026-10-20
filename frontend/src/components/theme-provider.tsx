@@ -11,7 +11,11 @@ export function ThemeProvider({
   return (
     <NextThemesProvider
       {...props}
-      forcedTheme={pathname === "/" ? "dark" : undefined}
+      forcedTheme={
+        pathname === "/" || pathname?.startsWith("/workspace")
+          ? "light"
+          : undefined
+      }
     >
       {children}
     </NextThemesProvider>

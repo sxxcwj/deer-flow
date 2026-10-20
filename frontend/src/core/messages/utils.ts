@@ -80,10 +80,7 @@ export function groupMessages<T>(
         if (open) {
           open.messages.push(message);
         } else {
-          console.error(
-            "Unexpected tool message outside a processing group",
-            message,
-          );
+          // Orphan tool message (e.g. right after a clarification); ignore silently.
         }
       }
       continue;
@@ -349,6 +346,8 @@ export interface FileInMessage {
 export function stripUploadedFilesTag(content: string): string {
   return content
     .replace(/<uploaded_files>[\s\S]*?<\/uploaded_files>/g, "")
+    .replace(/<project_context>[\s\S]*?<\/project_context>/g, "")
+    .replace(/<method_context>[\s\S]*?<\/method_context>/g, "")
     .trim();
 }
 
