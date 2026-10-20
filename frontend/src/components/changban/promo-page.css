@@ -40,8 +40,30 @@
 }
 
 .cb-mark {
-  font-size: 1.05rem;
-  letter-spacing: 0.22em;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The logo keeps its own proportions; only the box is sized per placement. */
+.cb-logo {
+  height: auto;
+  width: auto;
+  max-width: 100%;
+}
+
+.cb-logo-nav {
+  width: 8.6rem;
+}
+
+.cb-logo-hero {
+  width: 15rem;
+  margin-bottom: 1.5rem;
+  animation: cb-rise 0.9s 0.06s ease both;
+}
+
+.cb-logo-contact {
+  width: 13rem;
+  margin-bottom: 1.4rem;
 }
 
 .cb-nav nav {
@@ -338,6 +360,18 @@
   .cb-nav nav {
     gap: 0.8rem;
     font-size: 0.85rem;
+  }
+
+  .cb-logo-nav {
+    width: 6.4rem;
+  }
+
+  .cb-logo-hero {
+    width: 12rem;
+  }
+
+  .cb-logo-contact {
+    width: 10.5rem;
   }
 
   .cb-seal {
