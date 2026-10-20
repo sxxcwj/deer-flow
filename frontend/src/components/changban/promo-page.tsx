@@ -71,7 +71,6 @@ export function PromoPage() {
           <p className="cb-spine" aria-hidden="true">
             Changban · the long companionship
           </p>
-          <Image {...LOGO} alt="长伴咨询 Accompany Consultation" className="cb-logo cb-logo-hero" priority />
           <p className="cb-kicker">山西 · 组织、人才与激励</p>
           <h1>
             每个高成长企业背后，
@@ -140,7 +139,6 @@ export function PromoPage() {
       </main>
 
       <footer id="contact">
-        <Image {...LOGO} alt="长伴咨询 Accompany Consultation" className="cb-logo cb-logo-contact" />
         <p>预约一次组织对话</p>
         <a href="mailto:wangjian@cbrlzy.com">wangjian@cbrlzy.com</a>
         <a href="tel:13233635522">132 3363 5522</a>

@@ -55,17 +55,6 @@
   width: 8.6rem;
 }
 
-.cb-logo-hero {
-  width: 15rem;
-  margin-bottom: 1.5rem;
-  animation: cb-rise 0.9s 0.06s ease both;
-}
-
-.cb-logo-contact {
-  width: 13rem;
-  margin-bottom: 1.4rem;
-}
-
 .cb-nav nav {
   display: flex;
   gap: 1.35rem;
@@ -364,14 +353,6 @@
 
   .cb-logo-nav {
     width: 6.4rem;
-  }
-
-  .cb-logo-hero {
-    width: 12rem;
-  }
-
-  .cb-logo-contact {
-    width: 10.5rem;
   }
 
   .cb-seal {

@@ -17,7 +17,7 @@
 | 位置 | 长伴 |
 |---|---|
 | 根布局 metadata | `src/app/layout.tsx` —— title「长伴咨询」、description「每个高成长企业背后，都有长伴相随。」 |
-| 品牌 logo | `public/images/changban-logo.png`（1182×332 透明底 PNG），用在落地页的导航、首屏和联系区三处 |
+| 品牌 logo | `public/images/changban-logo.png`（1182×332 透明底 PNG），只用在落地页的导航左上角 |
 | 品牌落地页 | `src/app/page.tsx` → `src/components/changban/promo-page.tsx`（取代上游 `components/landing/` 的首页） |
 | 页面标题后缀 | `core/i18n/locales/*.ts` 的 `pages.appName`（驱动所有「xxx - 长伴咨询」标题） |
 | 欢迎页 | 同上 `welcome.description` / `welcome.createYourOwnSkill*` |
