@@ -3,6 +3,8 @@
 > 本文件是长伴咨询对上游 DeerFlow 的定制说明，不属于上游 AGENTS.md 继承链
 > （上游对继承链有 96KB 硬上限，见 `scripts/check_agent_guidance.py`）。
 
+前端的对应说明在 [../../frontend/docs/WORKBENCH.md](../../frontend/docs/WORKBENCH.md)。
+
 Upstream provides the general agent platform. These are the consulting-specific
 additions layered on top of it. They are **not** upstream features — do not
 remove them during upstream merges, and re-apply them after each sync.

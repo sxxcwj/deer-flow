@@ -114,9 +114,15 @@ export function parseArtifactViewerQuery(
  * Applied through the route's `generateMetadata`, not `document.title`: the
  * App Router owns the title element and re-applies the layout's metadata over
  * anything an effect writes.
+ *
+ * `appName` is the branded product name (the workspace's `pages.appName`), so
+ * the viewer tab carries the same name as the rest of the product.
  */
-export function artifactViewerTitle(filepath: string | undefined) {
-  return filepath ? `${getFileName(filepath)} - DeerFlow` : "DeerFlow";
+export function artifactViewerTitle(
+  filepath: string | undefined,
+  appName: string,
+) {
+  return filepath ? `${getFileName(filepath)} - ${appName}` : appName;
 }
 
 /**

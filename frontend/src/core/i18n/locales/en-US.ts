@@ -277,11 +277,11 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to 🦌 DeerFlow, an open source super agent. With built-in and custom skills, DeerFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "Welcome back to the Changban Consulting workspace. Keep project materials, the firm's own methods and past conversations in one place, so every discussion continues from the last conclusion instead of starting over.",
 
-    createYourOwnSkill: "Create Your Own Skill",
+    createYourOwnSkill: "Turn your usual approach into a skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Write the things you reach for repeatedly as a skill, then call it on demand in a conversation\ninstead of explaining it from scratch every time.",
   },
 
   // Clipboard
@@ -1704,7 +1704,7 @@ export const enUS: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "Changban Consulting",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -2430,12 +2430,12 @@ export const enUS: Translations = {
     notification: {
       title: "Notification",
       description:
-        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "The Changban Consulting workspace only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "DeerFlow",
+      testTitle: "Changban Consulting",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",

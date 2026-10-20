@@ -16,6 +16,28 @@ https://github.com/user-attachments/assets/a8bcadc4-e040-4cf2-8fda-dd768b999c18
 > [!NOTE]
 > **DeerFlow 2.0 是一次彻底重写。** 它和 v1 没有共用代码。如果你要找的是最初的 Deep Research 框架，可以前往 [`1.x` 分支](https://github.com/bytedance/deer-flow/tree/main-1.x)。那里仍然欢迎贡献；当前的主要开发已经转向 2.0。
 
+## 长伴咨询工作台
+
+本仓库是长伴咨询内部使用的定制版，品牌为**长伴咨询**（山西长伴人力资源有限公司），
+基于上游 [bytedance/deer-flow](https://github.com/bytedance/deer-flow) 搭建。
+
+与上游相比的定制（**不是上游功能，同步上游时勿删**）：
+
+- **品牌与文案** —— 落地页、欢迎页、登录/建管理员页、页面标题、通知文案、
+  文档预览窗标题，全部换成长伴的
+- **工作台首页与项目页** —— 项目列表页、材料/交付物/挂接会话的咨询交付视图
+- **公司方法论** —— `/api/methods`，跨项目复用的公司口径
+- **工作台搜索** —— `/api/search`，同时搜项目、材料、交付物和方法论
+- **agent 头像** —— 自定义 agent 可带 emoji 或图片 URL
+
+设计与取舍：
+
+- 前端：[frontend/docs/WORKBENCH.md](frontend/docs/WORKBENCH.md)
+- 后端：[backend/docs/WORKBENCH.md](backend/docs/WORKBENCH.md)
+
+旧版工作台（JSON 版项目）的数据搬迁脚本：
+[backend/scripts/migrate_legacy_projects.py](backend/scripts/migrate_legacy_projects.py)。
+
 ## 官网
 
 想了解更多，或者直接看**真实演示**，可以访问[**官网**](https://deerflow.tech)。

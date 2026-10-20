@@ -16,6 +16,32 @@ https://github.com/user-attachments/assets/a8bcadc4-e040-4cf2-8fda-dd768b999c18
 > [!NOTE]
 > **DeerFlow 2.0 is a ground-up rewrite.** It shares no code with v1. If you're looking for the original Deep Research framework, it's maintained on the [`1.x` branch](https://github.com/bytedance/deer-flow/tree/main-1.x) — contributions there are still welcome. Active development has moved to 2.0.
 
+## Changban Consulting Workspace
+
+This repository is the customized build of **Changban Consulting** (山西长伴人力资源有限公司),
+an internal workspace built on top of upstream [bytedance/deer-flow](https://github.com/bytedance/deer-flow).
+
+What differs from upstream (**not upstream features — do not remove them when syncing upstream**):
+
+- **Branding and copy** — the landing page, the welcome screen, the sign-in and
+  first-admin pages, page titles, notification copy and the artifact preview tab
+  all carry the Changban identity
+- **Workspace home and project views** — the project list page and the consulting
+  delivery views for materials, deliverables and attached conversations
+- **Firm methodologies** — `/api/methods`, reusable house criteria that live
+  outside any single project
+- **Workspace search** — `/api/search`, across projects, materials, deliverables
+  and methodologies at once
+- **Agent avatars** — custom agents may carry an emoji or an image URL
+
+Design notes:
+
+- Frontend: [frontend/docs/WORKBENCH.md](frontend/docs/WORKBENCH.md)
+- Backend: [backend/docs/WORKBENCH.md](backend/docs/WORKBENCH.md)
+
+Importer for the previous JSON-backed workspace:
+[backend/scripts/migrate_legacy_projects.py](backend/scripts/migrate_legacy_projects.py).
+
 ## Official Website
 
 Learn more and see **real demos** on our [**official website**](https://deerflow.tech).
