@@ -1,9 +1,5 @@
 # 长伴咨询 Workbench 扩展
 
-Upstream provides the general agent platform. These are the consulting-specific
-additions layered on top of it. They are **not** upstream features — do not
-remove them during upstream merges, and re-apply them after each sync.
-
 > 本文件是长伴咨询对上游 DeerFlow 的定制说明，不属于上游 AGENTS.md 继承链
 > （上游对继承链有 96KB 硬上限，见 `scripts/check_agent_guidance.py`）。
 
@@ -78,3 +74,42 @@ Custom agents may carry an emoji or an http(s) image URL.
 - An empty string on update clears the avatar; an omitted field preserves it
 - `setup_agent` and the `PUT /api/agents/{name}` route carry an existing
   avatar forward when other fields are edited
+
+### Legacy Project Import (`scripts/migrate_legacy_projects.py`)
+
+Before the upstream sync the workbench kept projects in
+`{base_dir}/projects.json` with material files under
+`{base_dir}/projects/{project_id}/materials/`. Upstream replaced that with the
+SQL project store. This one-shot importer bridges the two for a workbench
+carried over from the old layout.
+
+| Legacy | Upstream |
+|---|---|
+| `name` | `projects.name` |
+| `summary` | `projects.instructions` (the consultation brief) |
+| material file | shelf document, `source_kind == "upload"` (original bytes staged, upstream derives the markdown) |
+| output record | shelf document, `source_kind == "output"`; the legacy layout stored no bytes, so the title and note are rendered as a markdown body |
+| `thread_ids` | `threads_meta.project_id` |
+
+Run it from `backend/` (the Gateway's own working directory, which is what
+`database.sqlite_dir` is relative to):
+
+```bash
+cd backend
+uv run python scripts/migrate_legacy_projects.py --dry-run   # preview
+uv run python scripts/migrate_legacy_projects.py             # import
+uv run python scripts/migrate_legacy_projects.py --user-id alice
+```
+
+Properties, mirroring `scripts/migrate_agents_to_db.py`:
+
+- **Explicit, operator-run** — nothing auto-imports on boot.
+- **Idempotent** — the legacy id is recorded in `projects.presentation.legacy_id`,
+  so a second run imports nothing.
+- **Non-destructive** — the legacy JSON and material files are left in place.
+- **Owner-scoped** — imported projects belong to `--user-id` (default: the
+  effective runtime user) and are invisible to other users.
+- A thread that no longer exists in `threads_meta` is reported as a warning
+  and does not abort the import.
+
+Tests: `tests/test_migrate_legacy_projects.py`.
