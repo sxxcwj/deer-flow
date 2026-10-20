@@ -25,15 +25,19 @@ the firm rather than to a single client project.
 
 ### Search (`/api/search`)
 
-Local text search over methods, chat titles and other workbench records.
-`GET /api/search?q=...&kind=...`. Bounded to 20 hits per kind.
+Workbench text search over upstream's projects, their shelf documents, and the
+firm-methods catalogue. `GET /api/search?q=...`. Bounded to 20 hits.
 
-**Known gap**: the `project` / `output` / `material` hit kinds still read the
-retired `projects.json` layout, which upstream's database-backed project store
-no longer writes — those kinds currently return nothing. The `method` kind
-works. Re-point the project kinds at `project_repo` (owner-scoped, same
-pattern as `app/gateway/routers/projects.py`) when the consulting delivery
-views are ported onto upstream projects.
+- `project` — name and `instructions` of upstream's projects
+- `material` — shelf documents with `source_kind == "upload"`
+- `output` — shelf documents with `source_kind == "output"` (deliverables
+  promoted from a thread's artifacts)
+- `method` — entries in `methods.json`
+
+Projects and documents are read through upstream's owner-scoped repositories
+(`app.state.project_repo` / `app.state.project_document_repo`), so the results
+respect the caller's permissions. When no database is configured the endpoint
+still serves the `method` kind instead of failing.
 
 ### Projects
 
@@ -43,6 +47,17 @@ views are ported onto upstream projects.
 trash retention, LLM summaries and owner-scoped authorization. They are
 mounted by `app/gateway/app.py`; do **not** register a second `/api/projects`
 router.
+
+The consulting delivery views map onto upstream's model rather than replacing
+it: a project's `instructions` is the consultation brief, shelf documents with
+`source_kind == "upload"` are the materials, documents with
+`source_kind == "output"` are the deliverables, and
+`/workspace/projects/[id]` (upstream's) carries the document shelf, the
+attached conversations and the new-chat button. The workbench adds only a
+list page — `frontend/src/components/workspace/projects/workbench-projects-page.tsx` —
+that links into it. Starting a conversation from a project attaches it to that
+project: upstream's `chat-page.tsx` passes the `?project=` query parameter to
+`createThread`.
 
 Upstream also already renders project context into the model request:
 `DynamicContextMiddleware.wrap_model_call` emits one transient, request-only

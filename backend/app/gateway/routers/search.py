@@ -1,18 +1,29 @@
-"""Local text search across projects, materials, and methods."""
+"""Workbench search across projects, project documents, and firm methods.
+
+Projects and their documents live in upstream's SQL-backed store (owner-scoped,
+see ``app/gateway/routers/projects.py``); firm methods are 长伴's own file-backed
+catalogue (``methods.json``). Both are searched here so the workbench home has
+one entry point.
+"""
 
 import json
+import logging
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from app.gateway.authz import require_permission
 from deerflow.config.paths import get_paths
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["search"])
 
-_ID_RE = re.compile(r"^[a-f0-9]{12}$")
 _RESULT_LIMIT = 20
+_PROJECT_SCAN_LIMIT = 100
+_DOCUMENT_SCAN_LIMIT = 50
+_ID_RE = re.compile(r"^[a-f0-9]{12}$")
 
 
 class SearchHit(BaseModel):
@@ -56,47 +67,88 @@ def _read_excerpt(path: Path) -> str:
         return ""
 
 
+def _project_repo(request: Request):
+    """Return upstream's project repository, or None when it is unavailable.
+
+    The repository is only mounted when the Gateway runs with a database
+    configured. A local-only deployment still has the methods catalogue, so
+    search degrades to that instead of failing the whole request.
+    """
+    return getattr(request.app.state, "project_repo", None)
+
+
+def _document_repo(request: Request):
+    return getattr(request.app.state, "project_document_repo", None)
+
+
 @router.get("/search", response_model=SearchResponse)
-async def search_workbench(q: str = Query(..., min_length=1, max_length=80)) -> SearchResponse:
+@require_permission("projects", "read")
+async def search_workbench(request: Request, q: str = Query(..., min_length=1, max_length=80)) -> SearchResponse:
     needle = q.strip()
     if not needle or any(ord(char) < 32 for char in needle):
         raise HTTPException(status_code=422, detail="Query is invalid.")
-    base = get_paths().base_dir
+
     hits: list[SearchHit] = []
 
     def add(hit: SearchHit) -> None:
         if len(hits) < _RESULT_LIMIT:
             hits.append(hit)
 
-    for project in _load_list(base / "projects.json"):
-        if not isinstance(project, dict):
-            continue
-        project_id = str(project.get("id") or "")
-        name = str(project.get("name") or "")
-        summary = str(project.get("summary") or "")
-        if _snippet(name, needle) or _snippet(summary, needle):
-            add(SearchHit(kind="project", title=name, snippet=_snippet(f"{name} {summary}", needle), project_id=project_id, target_id=project_id))
-        for output in project.get("outputs") or []:
-            if not isinstance(output, dict):
+    # 1) Upstream projects and their shelf documents.
+    project_repo = _project_repo(request)
+    document_repo = _document_repo(request)
+    if project_repo is not None:
+        try:
+            projects = await project_repo.list()
+        except Exception:
+            logger.warning("Could not list projects for search", exc_info=True)
+            projects = []
+        for project in projects[:_PROJECT_SCAN_LIMIT]:
+            if not isinstance(project, dict):
                 continue
-            title = str(output.get("title") or "")
-            note = str(output.get("note") or "")
-            snippet = _snippet(f"{title} {note}", needle)
-            if snippet:
-                add(SearchHit(kind="output", title=title, snippet=snippet, project_id=project_id, target_id=str(output.get("id") or "")))
-        if not _ID_RE.fullmatch(project_id):
-            continue
-        material_dir = base / "projects" / project_id / "materials"
-        for material in project.get("materials") or []:
-            if not isinstance(material, dict):
+            project_id = str(project.get("id") or "")
+            name = str(project.get("name") or "")
+            instructions = str(project.get("instructions") or "")
+            if _snippet(name, needle) or _snippet(instructions, needle):
+                add(
+                    SearchHit(
+                        kind="project",
+                        title=name,
+                        snippet=_snippet(f"{name} {instructions}", needle),
+                        project_id=project_id,
+                        target_id=project_id,
+                    )
+                )
+            if document_repo is None or not project_id:
                 continue
-            material_id = str(material.get("id") or "")
-            filename = str(material.get("filename") or "")
-            excerpt = _read_excerpt(material_dir / f"{material_id}.excerpt.txt") if _ID_RE.fullmatch(material_id) else ""
-            snippet = _snippet(filename, needle) or _snippet(excerpt, needle)
-            if snippet:
-                add(SearchHit(kind="material", title=filename or name, snippet=snippet, project_id=project_id, target_id=material_id))
+            try:
+                documents = await document_repo.list_active(project_id, limit=_DOCUMENT_SCAN_LIMIT, offset=0)
+            except Exception:
+                logger.debug("Could not list documents for project %s", project_id, exc_info=True)
+                continue
+            for document in documents:
+                if not isinstance(document, dict):
+                    continue
+                title = str(document.get("name") or "")
+                summary = str(document.get("summary") or "")
+                snippet = _snippet(f"{title} {summary}", needle)
+                if not snippet:
+                    continue
+                # ``upload`` is a material the user brought in; ``output`` is a
+                # deliverable promoted from a thread's artifacts.
+                kind = "material" if document.get("source_kind") == "upload" else "output"
+                add(
+                    SearchHit(
+                        kind=kind,
+                        title=title or name,
+                        snippet=snippet,
+                        project_id=project_id,
+                        target_id=str(document.get("id") or ""),
+                    )
+                )
 
+    # 2) 长伴 firm methods (file-backed catalogue).
+    base = get_paths().base_dir
     method_dir = base / "methods"
     for method in _load_list(base / "methods.json"):
         if not isinstance(method, dict):
